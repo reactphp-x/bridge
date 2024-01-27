@@ -10,7 +10,7 @@ use Ramsey\Uuid\Uuid;
 use React\Stream\DuplexStreamInterface;
 use Reactphp\Framework\Bridge\Interface\ServerInterface;
 use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
-use Reactphp\Framework\Bridge\Interface\Info;
+use Reactphp\Framework\Bridge\Info;
 use Reactphp\Framework\Bridge\Interface\VerifyInterface;
 use Reactphp\Framework\Bridge\DecodeEncode\WebsocketDecodeEncode;
 
@@ -110,6 +110,11 @@ class Server implements ServerInterface
 
     protected function handleTmpData($stream, $message)
     {
+        if ($this->controllerConnections->contains($stream)) {
+            $this->handleControlData($stream, $message);
+            return;
+        }
+
         if (!is_array($message)) {
             $stream->close();
             return;

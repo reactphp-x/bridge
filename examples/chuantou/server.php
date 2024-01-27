@@ -39,6 +39,10 @@ Loop::addPeriodicTimer(2, function () use ($pool) {
 $socket = new SocketServer('0.0.0.0:8090');
 $socket->on('connection', async(function (\React\Socket\ConnectionInterface $connection) use ($pool) {
 
+
+
+    return;
+
     $data = '';
     $connection->on('data', $fn = function ($buffer) use (&$data) {
         $data .= $buffer;
@@ -78,12 +82,14 @@ $socket->on('connection', async(function (\React\Socket\ConnectionInterface $con
         'uuid' =>'8d24e2ba-c6f8-4bb6-8838-cacd37f64165'
     ]);
 
+    $connection->removeListener('data', $fn);
+    $fn = null;
+
     if ($data) {
         $stream->write($data);
         $data = '';
-        $connection->removeListener('data', $fn);
-        $fn = null;
     }
+
     $connection->pipe($stream, [
         'end' => true
     ]);

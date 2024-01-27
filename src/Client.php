@@ -13,7 +13,7 @@ use Laravel\SerializableClosure\SerializableClosure;
 use function React\Async\await;
 use React\EventLoop\Loop;
 use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
-use Reactphp\Framework\Bridge\Interface\Info;
+use Reactphp\Framework\Bridge\Info;
 use Reactphp\Framework\Bridge\DecodeEncode\WebsocketDecodeEncode;
 use Reactphp\Framework\Bridge\Connector\WebsocketConnector;
 use Reactphp\Framework\Bridge\Connector\TcpConnector;

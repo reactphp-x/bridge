@@ -7,7 +7,7 @@ use Reactphp\Framework\Pool\AbstractConnectionPool;
 use Reactphp\Framework\Bridge\Interface\CallInterface;
 use Reactphp\Framework\Bridge\Interface\CreateConnectionInterface;
 use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
-use Reactphp\Framework\Bridge\Interface\Info;
+use Reactphp\Framework\Bridge\Info;
 use React\EventLoop\LoopInterface;
 use React\EventLoop\Loop;
 use React\Promise\Deferred;

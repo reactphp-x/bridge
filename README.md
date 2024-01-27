@@ -61,7 +61,7 @@ $client = new Client($uri, $uuid, new TcpDecodeEncode);
 $client->start();
 ```
 
-server call client
+### server call client
 ```php
 // 调用客户端
 $stream = $pool->call(function($stream){
@@ -87,7 +87,7 @@ $stream->on('close', function(){
 
 ```
 
-client call client
+### client call client
 ```php
 $stream = $client->call(function($stream){
     // 运行在另外一个客户端
@@ -97,7 +97,7 @@ $stream = $client->call(function($stream){
     });
     return $stream;
 }, [
-    'uuid' => 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb',
+    'uuid' => '8d24e2ba-c6f8-4bb6-8838-cacd37f64165',
     // ‘something’ => '10.8.0.1'
 ]);
 $stream->write('hello');

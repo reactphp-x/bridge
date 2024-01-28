@@ -60,9 +60,10 @@ class PortToPort
                 $data = '';
                 $stream->on('data', $fn = function ($buffer) use (&$data, $inMapBuffer) {
                     // $buffer = preg_replace('/Host: ' . '192.168.1.9:8090' . '.*\r\n/', "Host: 192.168.1.9:8080\r\n", $buffer);
-                    $data .= $buffer;
                     if ($inMapBuffer) {
-                        $data = $inMapBuffer($data);
+                        $data .= $inMapBuffer($buffer);
+                    } else {
+                        $data .= $buffer;
                     }
                 });
                 $inStream = new ThroughStream($inMapBuffer);

@@ -82,6 +82,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
             $uuidToStream = $this->connections[$connection]['uuidToStream'];
             $uuidToStream[$uuid] = $stream;
             $this->connections[$connection]['uuidToStream'] = $uuidToStream;
+            $this->connections[$connection]['controlUuidToStreamUuids'][$this->createConnection->getControlUuidByTunnelStream($connection)][] = $uuid;
             $connection->write($this->decodeEncode->encode([
                 'cmd' => 'callback',
                 'uuid' => $uuid,
@@ -143,6 +144,17 @@ class Pool extends AbstractConnectionPool implements CallInterface
                     if ($this->connections[$connection]['streams']->count() == 0) {
                         $this->connections[$connection]['status'] = self::IDLE;
                     }
+
+                    $controlUuid = $this->createConnection->getControlUuidByTunnelStream($connection);
+                    $controlUuidToStreamUuids = $this->connections[$connection]['controlUuidToStreamUuids'];
+                    if (isset($controlUuidToStreamUuids[$controlUuid])) {
+                        $controlUuidToStreamUuids[$controlUuid] = array_diff($controlUuidToStreamUuids[$controlUuid], [$uuid]);
+                        if (count($controlUuidToStreamUuids[$controlUuid]) == 0) {
+                            unset($controlUuidToStreamUuids[$controlUuid]);
+                        }
+                    }
+                    $this->connections[$connection]['controlUuidToStreamUuids'] = $controlUuidToStreamUuids;
+
                     echo spl_object_hash($connection) . ' stream count ' . $this->connections[$connection]['streams']->count() . "\n";
                     echo "close $uuid\n";
                     $this->releaseConnection($connection);
@@ -373,7 +385,8 @@ class Pool extends AbstractConnectionPool implements CallInterface
             'status' => self::BUSY,
             'streams' => new \SplObjectStorage,
             'decodeEncode' => new $this->decodeEncodeClass,
-            'uuidToStream' => []
+            'uuidToStream' => [],
+            'controlUuidToStreamUuids' => [],
         ]));
 
         $connection->on('data', function ($buffer) use ($connection) {

@@ -9,31 +9,33 @@ use React\Stream\ThroughStream;
 class PortToPort
 {
     protected $call;
-    protected $mapBuffer;
 
     protected $fromAddress;
+    protected $inMapBuffer;
+
     protected $toUuid;
     protected $toAddress;
+    protected $outMapBuffer;
 
 
-    public function __construct(CallInterface $call, $mapBuffer = null)
+    public function __construct(CallInterface $call)
     {
         $this->call = $call;
-        $this->mapBuffer = $mapBuffer;
-
     }
 
-    public function from($address)
+    public function from($address, $inMapBuffer = null)
     {
         $this->fromAddress = $address;
+        $this->inMapBuffer = $inMapBuffer;
         return $this;
     }
 
 
-    public function to($uuid, $address)
+    public function to($uuid, $address, $outMapBuffer = null)
     {
         $this->toUuid = $uuid;
         $this->toAddress = $address;
+        $this->outMapBuffer = $outMapBuffer;
         return $this;
     }
 
@@ -45,32 +47,37 @@ class PortToPort
             $connection->on('data', $fn = function ($buffer) use (&$data) {
                 $data .= $buffer;
             });
-            $mapBuffer = $this->mapBuffer;
-            if ($mapBuffer) {
-                $mapBuffer = $mapBuffer->bindTo(null, null);
+            $inMapBuffer = $this->inMapBuffer;
+            if ($inMapBuffer) {
+                $inMapBuffer = $inMapBuffer->bindTo(null, null);
             }
             $toAddress = $this->toAddress;
-            $stream = $this->call->call((function ($stream) use ($mapBuffer, $toAddress) {
+            $outMapBuffer = $this->outMapBuffer;
+            if ($outMapBuffer) {
+                $outMapBuffer = $outMapBuffer->bindTo(null, null);
+            }
+            $stream = $this->call->call((function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
                 $data = '';
-                $stream->on('data', $fn = function ($buffer) use (&$data, $mapBuffer) {
+                $stream->on('data', $fn = function ($buffer) use (&$data, $inMapBuffer) {
                     // $buffer = preg_replace('/Host: ' . '192.168.1.9:8090' . '.*\r\n/', "Host: 192.168.1.9:8080\r\n", $buffer);
                     $data .= $buffer;
-                    if ($mapBuffer) {
-                        $data = $mapBuffer($data);
+                    if ($inMapBuffer) {
+                        $data = $inMapBuffer($data);
                     }
                 });
-                $throhStream = new ThroughStream($mapBuffer);
+                $inStream = new ThroughStream($inMapBuffer);
+                $outStream = new ThroughStream($outMapBuffer);
                 $connector = new \React\Socket\Connector();
-                $connector->connect($toAddress)->then(function (\React\Socket\ConnectionInterface $connection) use (&$data, $stream, $fn, $throhStream) {
+                $connector->connect($toAddress)->then(function (\React\Socket\ConnectionInterface $connection) use (&$data, $stream, $fn, $inStream, $outStream) {
                     if ($data) {
                         $connection->write($data);
                         $data = '';
                     }
                     $stream->removeListener('data', $fn);
-                    $stream->pipe($throhStream)->pipe($connection, [
+                    $stream->pipe($inStream)->pipe($connection, [
                         'end' => true
                     ]);
-                    $connection->pipe($stream, [
+                    $connection->pipe($outStream)->pipe($stream, [
                         'end' => true
                     ]);
                     $connection->on('close', function () use ($stream) {

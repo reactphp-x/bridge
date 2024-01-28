@@ -279,7 +279,10 @@ class Server implements ServerInterface
         } else if ($this->tunnelConnections->contains($stream)) {
             $control = $this->tunnelConnections[$stream]['control'];
             if ($this->controllerConnections->contains($control)) {
+                $this->controllerConnections[$control]['request_number'] = $this->controllerConnections[$control]['request_number'] - 1;
+                $this->controllerConnections[$control]['tunnelConnections'][$stream]['request_number'] = $this->controllerConnections[$control]['tunnelConnections'][$stream]['request_number'] - 1;
                 $this->controllerConnections[$control]['tunnelConnections']->detach($stream);
+
             }
             $this->tunnelConnections->detach($stream);
         }

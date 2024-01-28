@@ -5,6 +5,7 @@ use React\Stream\DuplexStreamInterface;
 use React\Socket\SocketServer;
 use function React\Async\async;
 use React\Stream\ThroughStream;
+use React\Datagram\Factory;
 
 class PortToPort
 {
@@ -17,10 +18,14 @@ class PortToPort
     protected $toAddress;
     protected $outMapBuffer;
 
+    protected $protocol;
 
-    public function __construct(CallInterface $call)
+
+    public function __construct(CallInterface $call, $protocol = 'tcp')
     {
         $this->call = $call;
+        $this->protocol = $protocol;
+
     }
 
     public function from($address, $inMapBuffer = null)
@@ -41,6 +46,11 @@ class PortToPort
 
     public function start()
     {
+        if ($this->protocol == 'udp') {
+            $this->startUdp();
+            return;
+        }
+
         $socket = new SocketServer(strpos(':', $this->fromAddress) === false ? "0.0.0.0:{$this->fromAddress}" : $this->fromAddress);
         $socket->on('connection', async(function (\React\Socket\ConnectionInterface $connection) {
             $data = '';
@@ -119,17 +129,16 @@ class PortToPort
         }));
     }
 
-
-    // public function __construct(DuplexStreamInterface $stream, CallInterface $call, callable $mapBuffer = null)
-    // {
-    //     $this->stream = $stream;
-    //     $this->call = $call;
-
-    //     if (!$mapBuffer) {
-    //         $this->mapBuffer = function ($buffer) {
-    //             return $buffer;
-    //         };
-    //     }
-    // }
+    protected function startUdp()
+    {
+        $factory = new Factory;
+        $factory->createServer(strpos(':', $this->fromAddress) === false ? "0.0.0.0:{$this->fromAddress}" : $this->fromAddress)->then(function ($server) {
+            $server->on('message', function($message, $address, $server) {
+                $server->send('hello ' . $address . '! echo: ' . $message, $address);
+        
+                echo 'client ' . $address . ': ' . $message . PHP_EOL;
+            });
+        });
+    }
 
 }

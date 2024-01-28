@@ -70,8 +70,11 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $write = new Stream\ThroughStream;
         $stream = new Stream\CompositeStream($read, $write);
         try {
-
-            $serialized = is_string($closure) ? $closure : $this->getSeralized($closure);
+            if (is_string($closure)) {
+                $serialized = $closure;
+            } else {
+                $serialized =  $this->getSeralized($closure->bindTo(null, null));
+            }
             $connection = await($this->getConnection($params));
             $uuid = Uuid::uuid4()->toString();
             $this->connections[$connection]['streams']->attach($stream);

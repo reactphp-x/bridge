@@ -389,6 +389,7 @@ final class Client extends AbstractClient
 
     public function call($closure, $params = null, $data = [])
     {
+        $closure = $closure->bindTo(null, null);
         $error = null;
 
         $deferred = new Deferred;

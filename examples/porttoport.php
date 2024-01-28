@@ -56,7 +56,7 @@ class PortToPort
             if ($outMapBuffer) {
                 $outMapBuffer = $outMapBuffer->bindTo(null, null);
             }
-            $stream = $this->call->call((function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
+            $stream = $this->call->call(function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
                 $data = '';
                 $stream->on('data', $fn = function ($buffer) use (&$data, $inMapBuffer) {
                     // $buffer = preg_replace('/Host: ' . '192.168.1.9:8090' . '.*\r\n/', "Host: 192.168.1.9:8080\r\n", $buffer);
@@ -91,7 +91,7 @@ class PortToPort
                 });
 
                 return $stream;
-            })->bindTo(null, null), [
+            }, [
                 'uuid' => $this->toUuid
             ]);
 

@@ -8,7 +8,7 @@ use Reactphp\Framework\Bridge\DecodeEncode\TcpDecodeEncode;
 
 Client::$debug = true;
 
-$uri = 'tcp://192.168.1.9:8010';
+$uri = $argv[3] ?? 'tcp://192.168.1.9:8010';
 $client = new Client($uri, 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb', new TcpDecodeEncode);
 $client->start();
 

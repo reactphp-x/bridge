@@ -25,7 +25,6 @@ final class Client extends AbstractClient
     public static $debug = false;
 
     private $uri;
-    protected $uuid;
 
     /**
      * @var DecodeEncodeInterface
@@ -50,7 +49,7 @@ final class Client extends AbstractClient
 
     public function __construct($uri, $uuid, DecodeEncodeInterface $decodeEncode = null)
     {
-        $this->uuid = $uuid;
+        parent::__construct($uuid);
         $this->decodeEncode = $decodeEncode ?? new WebsocketDecodeEncode;
         $this->decodeEncodeClass = get_class($this->decodeEncode);
         $this->connections = new SplObjectStorage;
@@ -138,7 +137,7 @@ final class Client extends AbstractClient
         if ($this->controlConnection === $stream) {
             $this->controlConnection = null;
             echo "controlConnection close retry after 3 second\n";
-            if ($this->status != 2){
+            if ($this->status != 2) {
                 $this->status = 0;
             }
             Loop::addTimer(3, function () {
@@ -204,11 +203,9 @@ final class Client extends AbstractClient
         $uuid = $message['uuid'] ?? '';
         if ($cmd == 'init') {
             $this->emit('success', [$message['data'] ?? []]);
-        } 
-        else if($cmd == 'controllerConnected') {
+        } else if ($cmd == 'controllerConnected') {
             $this->emit('controllerConnected', [$message['data'] ?? []]);
-        }
-        else if ($cmd == 'createTunnelConnection') {
+        } else if ($cmd == 'createTunnelConnection') {
             $this->createTunnelConnection($uuid);
         } else if ($message['cmd'] == 'ping') {
             $stream->write($this->decodeEncode->encode([

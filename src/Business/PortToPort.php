@@ -1,16 +1,13 @@
 <?php
 
+namespace Reactphp\Framework\Bridge\Business;
+
 use Reactphp\Framework\Bridge\Interface\CallInterface;
-use React\Stream\DuplexStreamInterface;
-use React\Socket\SocketServer;
 use function React\Async\async;
-use React\Stream\ThroughStream;
-use React\Datagram\Factory;
-use Reactphp\Framework\Bridge\Business\ServerStream\TcpServerStream;
 use Reactphp\Framework\Bridge\Business\ServerStream\Factory as ServerStreamFactory;
 use Reactphp\Framework\Bridge\Business\StreamToStream;
 
-class PortToPort
+final class PortToPort
 {
     protected $call;
     protected $fromUuid;
@@ -53,7 +50,7 @@ class PortToPort
     public function start()
     {
         if ($this->serverStream) {
-            return ;
+            return;
         }
         $serverStream = ServerStreamFactory::createServerStream($this->protocol . '://' . (strpos(':', $this->fromAddress) === false ? "0.0.0.0:{$this->fromAddress}" : $this->fromAddress));
         $serverStream->on('stream', async(function ($connection, $info) {
@@ -75,7 +72,6 @@ class PortToPort
             $this->serverStream->stop();
             $this->serverStream = null;
         }
-        
     }
 
     public function getStatus()

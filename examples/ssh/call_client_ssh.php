@@ -16,7 +16,7 @@ $client->start();
 
 // client[8022]->server->client[127.0.0.1:22]
 (new PortToPort($client))
-->from('8022')
+->from(null, '8022')
 ->to(
     '8d24e2ba-c6f8-4bb6-8838-cacd37f64165',
     '127.0.0.1:22'

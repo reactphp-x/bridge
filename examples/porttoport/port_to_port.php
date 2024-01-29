@@ -1,10 +1,10 @@
 <?php
 
 require __DIR__ . '/../../vendor/autoload.php';
-require __DIR__ . '/../porttoport.php';
 
 use Reactphp\Framework\Bridge\Client;
 use Reactphp\Framework\Bridge\DecodeEncode\TcpDecodeEncode;
+use Reactphp\Framework\Bridge\Business\PortToPort;
 
 Client::$debug = true;
 

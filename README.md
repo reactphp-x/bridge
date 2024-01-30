@@ -4,7 +4,7 @@ one client call client service
 
 ## Install
 ```
-composer require reactphp-framework-bridge -vvv
+composer require reactphp-framework/bridge -vvv
 ```
 ## Usage
 

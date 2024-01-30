@@ -8,10 +8,6 @@ class SerializableClosure
 {
     public static function serialize($closure, $secretKey = '')
     {
-        if (is_string($closure)) {
-            return $closure;
-        }
-
         if ($secretKey) {
             LaravelSerializableClosure::setSecretKey($secretKey);
         }

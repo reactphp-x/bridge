@@ -18,6 +18,7 @@ final class PortToPort
 
     protected $toUuid;
     protected $toAddress;
+    protected $toSecretKey;
     protected $outMapBuffer;
 
     protected $protocol;
@@ -45,10 +46,11 @@ final class PortToPort
     }
 
 
-    public function to($uuid, $address, $outMapBuffer = null)
+    public function to($uuid, $address, $outMapBuffer = null, $toSecretKey = null)
     {
         $this->toUuid = $uuid;
         $this->toAddress = $address;
+        $this->toSecretKey = $toSecretKey;
         $this->outMapBuffer = $outMapBuffer;
         return $this;
     }
@@ -63,7 +65,7 @@ final class PortToPort
             // 这里可对connection 的流量解析后在转发到client(对于http 协议分析domain 转化为相对应的uuid)
             StreamToClient::create($this->call)
                 ->from($this->fromUuid, $info['local_address'] ?? '', $connection, $this->inMapBuffer)
-                ->to($this->toUuid, $this->toAddress, $this->outMapBuffer)
+                ->to($this->toUuid, $this->toAddress, $this->outMapBuffer, $this->toSecretKey)
                 ->start();
         }));
         $serverStream->on('error', function ($error) {

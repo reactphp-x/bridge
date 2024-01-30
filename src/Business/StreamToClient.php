@@ -4,6 +4,7 @@ namespace Reactphp\Framework\Bridge\Business;
 
 use Reactphp\Framework\Bridge\Interface\CallInterface;
 use Reactphp\Framework\Bridge\Business\ClientStream\Factory;
+use Reactphp\Framework\Bridge\SerializableClosure;
 
 final class StreamToClient
 {
@@ -18,6 +19,7 @@ final class StreamToClient
 
     protected $toUuid;
     protected $toAddress;
+    protected $toSecretKey;
 
     protected $status = 0;
     protected $errorMsg;
@@ -50,10 +52,11 @@ final class StreamToClient
         return $this;
     }
 
-    public function to($toUuid, $toAddress, $outMapBuffer = null)
+    public function to($toUuid, $toAddress, $outMapBuffer = null, $toSecretKey = null)
     {
         $this->toUuid = $toUuid;
         $this->toAddress = $toAddress;
+        $this->toSecretKey = $toSecretKey;
 
         $this->outMapBuffer = $outMapBuffer;
         return $this;
@@ -70,12 +73,12 @@ final class StreamToClient
         $inMapBuffer = $this->inMapBuffer;
         $toAddress = $this->toAddress;
         $outMapBuffer = $this->outMapBuffer;
-        StreamToStream::create()->from($this->fromStream)->to($toStream = $this->call->call(function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
+        StreamToStream::create()->from($this->fromStream)->to($toStream = $this->call->call(SerializableClosure::serialize(function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
             StreamToStream::create()->from($stream, $inMapBuffer)->to(Factory::createConnector($toAddress)->connect($toAddress)->then(null, function ($error) use ($stream) {
                 $stream->emit('error', [$error]);
             }), $outMapBuffer);
             return $stream;
-        }, [
+        }, $this->toSecretKey), [
             'uuid' => $this->toUuid
         ]));
         $this->status = 2;

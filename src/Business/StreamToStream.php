@@ -61,7 +61,7 @@ final class StreamToStream
 
         assert($stream instanceof DuplexStreamInterface);
         if (!$this->status) {
-            $stream->close();
+            $stream->end();
             return;
         }
 

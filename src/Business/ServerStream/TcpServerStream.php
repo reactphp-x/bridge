@@ -28,6 +28,7 @@ class TcpServerStream extends AbstractServerStream
                 $this->emit('error', [$error]);
             });
             $this->socket->on('close', function () {
+                $this->stop();
                 $this->emit('close');
             });
         }
@@ -36,6 +37,7 @@ class TcpServerStream extends AbstractServerStream
     public function stop()
     {
         if ($this->status) {
+            $this->status = false;
             $this->socket->close();
             $this->socket = null;
         }

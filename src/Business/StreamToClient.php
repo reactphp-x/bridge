@@ -34,6 +34,11 @@ final class StreamToClient
         $this->call = $call;
     }
 
+    public static function create(CallInterface $call)
+    {
+        return new static($call);
+    }
+
 
     public function from($fromUuid, $fromAddress, $fromStream, $inMapBuffer = null)
     {
@@ -65,8 +70,8 @@ final class StreamToClient
         $inMapBuffer = $this->inMapBuffer;
         $toAddress = $this->toAddress;
         $outMapBuffer = $this->outMapBuffer;
-        (new StreamToStream)->from($this->fromStream)->to($toStream = $this->call->call(function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
-            (new StreamToStream)->from($stream, $inMapBuffer)->to(Factory::createConnector($toAddress)->connect($toAddress)->then(null, function ($error) use ($stream) {
+        StreamToStream::create()->from($this->fromStream)->to($toStream = $this->call->call(function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
+            StreamToStream::create()->from($stream, $inMapBuffer)->to(Factory::createConnector($toAddress)->connect($toAddress)->then(null, function ($error) use ($stream) {
                 $stream->emit('error', [$error]);
             }), $outMapBuffer);
             return $stream;

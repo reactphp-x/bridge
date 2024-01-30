@@ -24,6 +24,11 @@ final class PortToPort
 
     protected $serverStream;
 
+    public static function create(CallInterface $call, $protocol = 'tcp')
+    {
+        return new static($call, $protocol);
+    }
+
 
     public function __construct(CallInterface $call, $protocol = 'tcp')
     {
@@ -55,7 +60,8 @@ final class PortToPort
         }
         $serverStream = ServerStreamFactory::createServerStream($this->protocol . '://' . (strpos(':', $this->fromAddress) === false ? "0.0.0.0:{$this->fromAddress}" : $this->fromAddress));
         $serverStream->on('stream', async(function ($connection, $info) {
-            (new StreamToClient($this->call))
+            // 这里可对connection 的流量解析后在转发到client(对于http 协议分析domain 转化为相对应的uuid)
+            StreamToClient::create($this->call)
                 ->from($this->fromUuid, $info['local_address'] ?? '', $connection, $this->inMapBuffer)
                 ->to($this->toUuid, $this->toAddress, $this->outMapBuffer)
                 ->start();
@@ -65,6 +71,7 @@ final class PortToPort
         });
         $serverStream->start();
         $this->serverStream = $serverStream;
+        return $this;
     }
 
     public function stop()

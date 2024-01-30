@@ -18,6 +18,11 @@ final class StreamToStream
     protected $inMapBuffer;
     protected $outMapBuffer;
 
+    public static function create()
+    {
+        return new static;
+    }
+
     public function from($fromStream, $inMapBuffer = null)
     {
         assert($fromStream instanceof DuplexStreamInterface);

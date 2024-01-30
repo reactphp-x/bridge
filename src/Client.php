@@ -217,7 +217,7 @@ final class Client extends AbstractClient
                 $this->uuidToDeferred[$uuid]->resolve(true);
             }
         } elseif ($cmd === 'extend_cmd') {
-            $this->emit('extend_cmd', [$message['data']['data'] ?? [], $stream]);
+            $this->emit('extend_cmd', [$message, $stream]);
         }
     }
 

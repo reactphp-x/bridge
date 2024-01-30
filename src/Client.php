@@ -9,7 +9,6 @@ use SplObjectStorage;
 use React\Promise\Deferred;
 use Ramsey\Uuid\Uuid;
 use React\Promise\Timer\TimeoutException;
-use Laravel\SerializableClosure\SerializableClosure;
 use function React\Async\await;
 use React\EventLoop\Loop;
 use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
@@ -23,6 +22,7 @@ final class Client extends AbstractClient
     use \Evenement\EventEmitterTrait;
 
     public static $debug = false;
+    public static $secretKey;
 
     private $uri;
 
@@ -238,8 +238,6 @@ final class Client extends AbstractClient
         if ($cmd == 'init') {
             $this->connections[$conn]['remote_address'] = $message['data']['remote_address'] ?? '';
         } else if ($cmd == 'callback') {
-            $serialized = $message['data']['serialized'];
-            $closure = unserialize($serialized)->getClosure();
             $read = new Stream\ThroughStream;
             $write = new Stream\ThroughStream;
             $stream = new Stream\CompositeStream($read, $write);
@@ -306,6 +304,8 @@ final class Client extends AbstractClient
                 if ($event) {
                     $this->emit($event, [$stream]);
                 }
+                $serialized = $message['data']['serialized'];
+                $closure = SerializableClosure::unserialize($serialized, static::$secretKey);
                 $r = $closure($stream, $this->connections[$conn]);
                 if ($r instanceof \React\Promise\PromiseInterface) {
                     $r->then(function ($value) use ($stream) {
@@ -400,7 +400,7 @@ final class Client extends AbstractClient
                 'uuid' => $this->uuid,
                 'data' => [
                     'event' => $uuid . '_' . 'callback_peer_stream',
-                    'serialized' => serialize(new SerializableClosure($closure)),
+                    'serialized' => SerializableClosure::serialize($closure),
                     'params' => $params,
                     'data' => $data
                 ]

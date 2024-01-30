@@ -362,6 +362,11 @@ class Server implements ServerInterface
         });
     }
 
+    public function getCOnnections()
+    {
+        return $this->controllerConnections;
+    }
+
     private function getControllerConnection($connections)
     {
         $currentConnection = null;

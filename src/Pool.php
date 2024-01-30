@@ -11,7 +11,6 @@ use Reactphp\Framework\Bridge\Info;
 use React\EventLoop\LoopInterface;
 use React\EventLoop\Loop;
 use React\Promise\Deferred;
-use Laravel\SerializableClosure\SerializableClosure;
 use function React\Async\async;
 use function React\Async\await;
 use Ramsey\Uuid\Uuid;
@@ -70,11 +69,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $write = new Stream\ThroughStream;
         $stream = new Stream\CompositeStream($read, $write);
         try {
-            if (is_string($closure)) {
-                $serialized = $closure;
-            } else {
-                $serialized =  $this->getSeralized($closure->bindTo(null, null));
-            }
+            $serialized = SerializableClosure::serialize($closure);
             $connection = await($this->getConnection($params));
             $uuid = Uuid::uuid4()->toString();
             $this->connections[$connection]['streams']->attach($stream);
@@ -88,7 +83,8 @@ class Pool extends AbstractConnectionPool implements CallInterface
                 'uuid' => $uuid,
                 'data' => [
                     'serialized' => $serialized
-                ] + $data]));
+                ] + $data
+            ]));
 
             $write->on('data', function ($data) use ($uuid, $connection) {
                 $connection->write($this->decodeEncode->encode([
@@ -177,11 +173,6 @@ class Pool extends AbstractConnectionPool implements CallInterface
         return $stream;
     }
 
-    protected function getSeralized($closure)
-    {
-        return serialize(new SerializableClosure($closure));
-    }
-
     public function getConnection($params = null)
     {
         if ($this->closed) {
@@ -199,7 +190,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
             }
         }
 
-      
+
 
         // 去看下闲置连接是否有符合要求的
         if ($this->idle_connections->count() > 0) {
@@ -398,7 +389,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         });
 
         $connection->on('close', function () use ($connection) {
-           
+
             if ($this->connections->contains($connection)) {
                 // 说明不在idle
                 if (!$this->idle_connections->contains($connection)) {
@@ -413,7 +404,6 @@ class Pool extends AbstractConnectionPool implements CallInterface
                     }
                     // trigger ping to close idle_connections
                     $this->_ping($connection)->then(null, function ($e) {
-                       
                     });
                 }
                 $streams = $this->connections[$connection]['streams'];

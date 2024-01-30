@@ -204,7 +204,7 @@ final class Client extends AbstractClient
         if ($cmd == 'init') {
             $this->emit('success', [$message['data'] ?? []]);
         } else if ($cmd == 'controllerConnected') {
-            $this->emit('controllerConnected', [$message['data'] ?? []]);
+            $this->emit('controllerConnected', [$message['data'] ?? [], $stream]);
         } else if ($cmd == 'createTunnelConnection') {
             $this->createTunnelConnection($uuid);
         } else if ($message['cmd'] == 'ping') {
@@ -216,6 +216,8 @@ final class Client extends AbstractClient
             if (isset($this->uuidToDeferred[$uuid])) {
                 $this->uuidToDeferred[$uuid]->resolve(true);
             }
+        } elseif ($cmd === 'extend_cmd') {
+            $this->emit('extend_cmd', [$message['data']['data'] ?? [], $stream]);
         }
     }
 

@@ -253,6 +253,8 @@ class Server implements ServerInterface
                     echo $th->getMessage() . "\n";
                 }
             })();
+        } else if ($cmd === 'extend_cmd') {
+            $this->emit('extend_cmd', [$message, $controlStream]);
         }
     }
 

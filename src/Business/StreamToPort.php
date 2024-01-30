@@ -6,7 +6,7 @@ use Reactphp\Framework\Bridge\Interface\CallInterface;
 use Reactphp\Framework\Bridge\Business\ClientStream\Factory;
 use Reactphp\Framework\Bridge\SerializableClosure;
 
-final class StreamToClient
+final class StreamToPort
 {
     protected $call;
     protected $fromUuid;

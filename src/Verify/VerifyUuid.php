@@ -12,7 +12,11 @@ class VerifyUuid implements VerifyInterface
     public function __construct($uuidToSomething)
     {
         if (isset($uuidToSomething[0])) {
-            $uuidToSomething = array_flip($uuidToSomething);
+            $tmp = [];
+            foreach ($uuidToSomething as $value) {
+                $tmp[$value] = '';
+            }
+            $uuidToSomething = $tmp;
         }
         $this->uuidToSomething = $uuidToSomething;
     }

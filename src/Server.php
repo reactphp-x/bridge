@@ -58,7 +58,8 @@ class Server implements ServerInterface
     {
         $stream->on('data', function ($buffer) use ($stream) {
             if (self::$debug) {
-                echo "onMessage" . $buffer . "\n";
+                echo "=====> onMessage <========" . "\n";
+                echo $buffer . "\n";
             }
         });
 

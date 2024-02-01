@@ -41,5 +41,5 @@ PortToPort::create($client)
     '8d24e2ba-c6f8-4bb6-8838-cacd37f64165',
     '127.0.0.1:22',
     null,
-    '123456'
+    ''
 )->start();

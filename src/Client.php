@@ -196,7 +196,9 @@ final class Client extends AbstractClient
         }
 
         if (self::$debug) {
-            echo 'controlMessage: ' . json_encode($message, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+            echo '====> controlMessage: <=====' . PHP_EOL;
+            var_export($message);
+            echo PHP_EOL;
         }
 
         $cmd = $message['cmd'] ?? '';
@@ -229,7 +231,9 @@ final class Client extends AbstractClient
         }
 
         if (self::$debug) {
-            echo 'tunnelMessage: ' . json_encode($message, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+            echo '====> tunnelMessage: <=====' . PHP_EOL;
+            var_export($message);
+            echo PHP_EOL;
         }
 
         $decodeEncode = $this->connections[$conn]['decodeEncode'];

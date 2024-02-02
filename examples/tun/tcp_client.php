@@ -52,8 +52,11 @@ $client->on('controllerConnected', function ($data) use ($client) {
 
     run_command('ip link set ' . $Interface . ' up');
     run_command("ip addr add $ip/24 dev " . $Interface);
-    run_command("iptables -t nat -D POSTROUTING -p all -d $ip/24 -j SNAT --to-source $ip");
     run_command("iptables -t nat -A POSTROUTING -p all -d $ip/24 -j SNAT --to-source $ip");
+
+    register_shutdown_function(function () use ($ip) {
+        run_command("iptables -t nat -D POSTROUTING -p all -d $ip/24 -j SNAT --to-source $ip");
+    });
 
     // Read Frames from the device
     echo 'Waiting for frames...', $br, "\n";

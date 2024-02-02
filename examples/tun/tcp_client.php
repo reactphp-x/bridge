@@ -54,9 +54,28 @@ $client->on('controllerConnected', function ($data) use ($client) {
     run_command("ip addr add $ip/24 dev " . $Interface);
     run_command("iptables -t nat -A POSTROUTING -p all -d $ip/24 -j SNAT --to-source $ip");
 
-    register_shutdown_function(function () use ($ip) {
-        run_command("iptables -t nat -D POSTROUTING -p all -d $ip/24 -j SNAT --to-source $ip");
-    });
+    try {
+        Loop::addSignal(\defined('SIGINT') ? \SIGINT : 2, $f1 = static function () use ($ip): void {
+            if (\PHP_VERSION_ID >= 70200 && \stream_isatty(\STDIN)) {
+                echo "\r";
+            }
+
+            echo "Received SIGINT, stopping loop\n";
+            run_command("iptables -t nat -D POSTROUTING -p all -d $ip/24 -j SNAT --to-source $ip");
+            Loop::stop();
+        });
+        Loop::addSignal(\defined('SIGTERM') ? \SIGTERM : 15, $f2 = static function () use ($ip): void {
+            echo "Received SIGTERM, stopping loop\n";
+            run_command("iptables -t nat -D POSTROUTING -p all -d $ip/24 -j SNAT --to-source $ip");
+            Loop::stop();
+        });
+    } catch (\Exception $e){
+        echo "Notice: No signal handler support, installing ext-ev or ext-pcntl recommended for production use.";
+    }
+
+    // Loop::removeSignal(\defined('SIGINT') ? \SIGINT : 2, $f1 ?? 'printf');
+    // Loop::removeSignal(\defined('SIGTERM') ? \SIGTERM : 15, $f2 ?? 'printf');
+
 
     // Read Frames from the device
     echo 'Waiting for frames...', $br, "\n";

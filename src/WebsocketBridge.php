@@ -6,14 +6,14 @@ namespace Reactphp\Framework\Bridge;
 use Psr\Http\Message\ServerRequestInterface;
 use Reactphp\Framework\WebsocketMiddleware\ConnectionInterface;
 use Reactphp\Framework\WebsocketMiddleware\MessageComponentInterface;
-use Reactphp\Framework\Bridge\Interface\ServerInterface;
+use Reactphp\Framework\Bridge\Interface\MessageComponentInterface as ServerMessageComponentInterface;
 
 class WebsocketBridge implements MessageComponentInterface
 {
 
     protected $server;
 
-    public function __construct(ServerInterface $server)
+    public function __construct(ServerMessageComponentInterface $server)
     {
         $this->server = $server;
     }

@@ -1,12 +1,12 @@
 <?php
 
-namespace Reactphp\Framework\Bridge;
+namespace Reactphp\Framework\Bridge\Io;
 
 // use Reactphp\Framework\Bridge\Interface\ServerInterface;
 use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
 use React\Socket\SocketServer;
 
-class TcpBridge
+class Tcp
 {
 
     protected $server;

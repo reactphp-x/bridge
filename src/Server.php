@@ -9,6 +9,7 @@ use React\Promise\Timer\TimeoutException;
 use Ramsey\Uuid\Uuid;
 use React\Stream\DuplexStreamInterface;
 use Reactphp\Framework\Bridge\Interface\ServerInterface;
+use Reactphp\Framework\Bridge\Interface\CallInterface;
 use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
 use Reactphp\Framework\Bridge\Info;
 use Reactphp\Framework\Bridge\Interface\VerifyInterface;
@@ -24,7 +25,7 @@ class Server implements ServerInterface
     protected $decodeEncodeClass;
 
 
-    protected $pool;
+    protected $call;
     protected $verify;
     protected $clients;
     protected $controllerConnections;
@@ -49,9 +50,14 @@ class Server implements ServerInterface
         $this->tunnelConnections = new \SplObjectStorage;
     }
 
-    public function setPool($pool)
+    public function setCall(CallInterface $call)
     {
-        $this->pool = $pool;
+        $this->call = $call;
+    }
+
+    public function call($closure, $params = null, $data = [])
+    {
+        return $this->call->call($closure, $params, $data);
     }
 
     public function onOpen(DuplexStreamInterface $stream, $info = null)
@@ -201,7 +207,7 @@ class Server implements ServerInterface
                         return;
                     }
 
-                    $stream = $this->pool->call(function ($stream) {
+                    $stream = $this->call->call(function ($stream) {
                         return $stream;
                     }, [
                         'uuid' => $uuid,
@@ -214,7 +220,7 @@ class Server implements ServerInterface
                         $data .= $buffer;
                     });
 
-                    $peerStream = $this->pool->call($message['data']['serialized'] ?? '', [
+                    $peerStream = $this->call->call($message['data']['serialized'] ?? '', [
                         'uuid' => $peerUuid,
                     ], $message['data']['data'] ?? []);
 
@@ -363,7 +369,7 @@ class Server implements ServerInterface
         });
     }
 
-    public function getCOnnections()
+    public function getConnections()
     {
         return $this->controllerConnections;
     }

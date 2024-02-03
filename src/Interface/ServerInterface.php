@@ -4,6 +4,6 @@ namespace Reactphp\Framework\Bridge\Interface;
 
 use Evenement\EventEmitterInterface;
 
-interface ServerInterface extends CreateConnectionInterface, MessageComponentInterface, EventEmitterInterface
+interface ServerInterface extends CreateConnectionInterface, MessageComponentInterface, EventEmitterInterface, CallInterface
 {
 }

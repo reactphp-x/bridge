@@ -45,7 +45,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
     ) {
         $this->connectTimeout = $config['connect_timeout'] ?? 3;
         $this->createConnection = $createConnection;
-        $this->createConnection->setPool($this);
+        $this->createConnection->setCall($this);
         $this->connections = new \SplObjectStorage;
 
         $this->decodeEncode = $decodeEncode ?? new WebsocketDecodeEncode;

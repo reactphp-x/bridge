@@ -21,6 +21,7 @@
         "rybakit/msgpack": "^0.9.1",
         "ratchet/pawl": "^0.4.1",
         "react/datagram": "^1.9",
-        "guzzlehttp/psr7": "^2.6"
+        "guzzlehttp/psr7": "^2.6",
+        "ratchet/rfc6455": "^0.3.1"
     }
 }

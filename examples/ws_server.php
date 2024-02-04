@@ -6,6 +6,10 @@ use Reactphp\Framework\Bridge\Server;
 use Reactphp\Framework\Bridge\Verify\VerifyUuid;
 use Reactphp\Framework\Bridge\Pool;
 use Reactphp\Framework\Bridge\WebsocketBridge;
+use Reactphp\Framework\Bridge\Io\Tcp;
+use Reactphp\Framework\Bridge\Tcp\TcpBridge;
+use Reactphp\Framework\Bridge\Http\HttpBridge;
+use Reactphp\Framework\Bridge\WebSocket\WsBridge;
 use React\Http\HttpServer;
 use React\Socket\SocketServer;
 use Reactphp\Framework\WebsocketMiddleware\WebsocketMiddleware;
@@ -31,14 +35,15 @@ $pool = new Pool($server, [
     'wait_timeout' => 3
 ]);
 
-Loop::addPeriodicTimer(1, function () use ($pool) {
-    echo "getPoolCount({$pool->getPoolCount()})\n";
-    echo "getWaitQueueCount({$pool->getWaitCount()})\n";
-    echo "getIdleCount({$pool->idleConnectionCount()})\n";
-});
+// Loop::addPeriodicTimer(1, function () use ($pool) {
+//     echo "getPoolCount({$pool->getPoolCount()})\n";
+//     echo "getWaitQueueCount({$pool->getWaitCount()})\n";
+//     echo "getIdleCount({$pool->idleConnectionCount()})\n";
+// });
 
 
-$http = new HttpServer(new WebsocketMiddleware(new WebsocketBridge($server)));
-$socket = new SocketServer('0.0.0.0:8010');
-$http->listen($socket);
+$tcp = new Tcp('0.0.0.0:8010', new TcpBridge(new HttpBridge(new WsBridge($server))));
 
+// $http = new HttpServer(new WebsocketMiddleware(new WebsocketBridge($server)));
+// $socket = new SocketServer('0.0.0.0:8010');
+// $http->listen($socket);

@@ -6,8 +6,8 @@ use Reactphp\Framework\Bridge\Server;
 use Reactphp\Framework\Bridge\Pool;
 use Reactphp\Framework\Bridge\Verify\VerifyUuid;
 use Reactphp\Framework\Bridge\DecodeEncode\TcpDecodeEncode;
-use Reactphp\Framework\Bridge\TcpBridge;
-use React\EventLoop\Loop;
+use Reactphp\Framework\Bridge\Tcp\TcpBridge;
+use Reactphp\Framework\Bridge\Io\Tcp;
 
 Server::$debug = true;
 
@@ -19,18 +19,11 @@ $server = new Server(new VerifyUuid([
 
 
 
+$tcp = new Tcp('0.0.0.0:8010', new TcpBridge($server));
+
 $pool = new Pool($server, [
     'max_connections' => 20,
     'connection_timeout' => 2,
     'keep_alive' => 5,
     'wait_timeout' => 3
 ]);
-
-Loop::addPeriodicTimer(1, function () use ($pool) {
-    // echo "getPoolCount({$pool->getPoolCount()})\n";
-    // echo "getWaitQueueCount({$pool->getWaitCount()})\n";
-    // echo "getIdleCount({$pool->idleConnectionCount()})\n";
-});
-
-$tcp = new TcpBridge('0.0.0.0:8010', $server);
-

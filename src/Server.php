@@ -84,6 +84,7 @@ class Server implements ServerInterface
         $this->tmpConnections->attach($stream, new Info([
             'decodeEncode' =>  new $this->decodeEncodeClass,
         ]));
+        echo "connection count({$this->clients->count()})\n";
     }
 
     public function onMessage(DuplexStreamInterface $stream, $msg)
@@ -275,6 +276,7 @@ class Server implements ServerInterface
 
     public function onClose(DuplexStreamInterface $stream, $reason = null)
     {
+        echo "Server onClose\n";
         if ($this->tmpConnections->contains($stream)) {
             $this->tmpConnections->detach($stream);
         } else if ($this->controllerConnections->contains($stream)) {

@@ -37,6 +37,7 @@ class HttpBridge implements MessageComponentInterface
     public function onMessage(DuplexStreamInterface $stream, $msg)
     {
         if ($this->streams[$stream]['http_headers_received']) {
+            // if we already received the HTTP headers, emit the message as is
             $this->component->onMessage($stream, $msg);
         } else {
             $this->streams[$stream]['http_buffer'] .= $msg;
@@ -49,19 +50,21 @@ class HttpBridge implements MessageComponentInterface
                 ]));
                 return;
             }
-
-            if (strpos($this->streams[$stream]['http_buffer'], "\r\n\r\n") !== false) {
+            $p = strpos($this->streams[$stream]['http_buffer'], "\r\n\r\n");
+            if ($p !== false) {
                 $httpBuffer = $this->streams[$stream]['http_buffer'];
                 unset($this->streams[$stream]['http_buffer']);
-                $request = Message::parseRequest(substr($httpBuffer, 0, strpos($httpBuffer, "\r\n\r\n")));
+                $request = Message::parseRequest(substr($httpBuffer, 0, $p + 4));
                 $this->streams[$stream]['http_headers_received'] = true;
                 $this->component->onOpen($stream, [
                     'remote_address' => $this->streams[$stream]['remote_address'],
                     'local_address' => $this->streams[$stream]['local_address'],
                     'request' => $request,
                 ]);
-                if (strpos($httpBuffer, "\r\n\r\n") + 4 < strlen($httpBuffer)) {
-                    $this->component->onMessage($stream, substr($httpBuffer, strpos($httpBuffer, "\r\n\r\n") + 4));
+
+                // if there is a message body, emit it as well
+                if ($p + 4 < strlen($httpBuffer)) {
+                    $this->component->onMessage($stream, substr($httpBuffer, $p + 4));
                 }
             }
         }
@@ -69,9 +72,11 @@ class HttpBridge implements MessageComponentInterface
 
     public function onClose(DuplexStreamInterface $stream, $reason = null)
     {
-        $this->streams->detach($stream);
-        if ($this->streams[$stream]['http_headers_received']) {
-            $this->component->onClose($stream, $reason);
+        if ($this->streams->contains($stream)) {
+            if ($this->streams[$stream]['http_headers_received']) {
+                $this->component->onClose($stream, $reason);
+            }
+            $this->streams->detach($stream);
         }
     }
 

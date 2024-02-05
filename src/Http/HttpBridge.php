@@ -2,12 +2,11 @@
 
 namespace Reactphp\Framework\Bridge\Http;
 
-use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
 use React\Stream\DuplexStreamInterface;
 use Reactphp\Framework\Bridge\Info;
 use GuzzleHttp\Psr7\Message;
 
-class HttpBridge implements MessageComponentInterface
+class HttpBridge implements HttpBridgeInterface
 {
 
     protected $component;
@@ -26,9 +25,7 @@ class HttpBridge implements MessageComponentInterface
 
     public function onOpen(DuplexStreamInterface $stream, $info = null)
     {
-        $this->streams->attach($stream, new Info([
-            'remote_address' => $info['remote_address'] ?? '',
-            'local_address' => $info['local_address'] ?? '',
+        $this->streams->attach($stream, new Info($info + [
             'http_headers_received' => false,
             'http_buffer' => '',
         ]));
@@ -56,9 +53,7 @@ class HttpBridge implements MessageComponentInterface
                 unset($this->streams[$stream]['http_buffer']);
                 $request = Message::parseRequest(substr($httpBuffer, 0, $p + 4));
                 $this->streams[$stream]['http_headers_received'] = true;
-                $this->component->onOpen($stream, [
-                    'remote_address' => $this->streams[$stream]['remote_address'],
-                    'local_address' => $this->streams[$stream]['local_address'],
+                $this->component->onOpen($stream, $this->streams[$stream]->toArray() + [
                     'request' => $request,
                 ]);
 

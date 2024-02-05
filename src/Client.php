@@ -11,9 +11,9 @@ use Ramsey\Uuid\Uuid;
 use React\Promise\Timer\TimeoutException;
 use function React\Async\await;
 use React\EventLoop\Loop;
-use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
 use Reactphp\Framework\Bridge\Info;
 use Reactphp\Framework\Bridge\DecodeEncode\WebsocketDecodeEncode;
+use Reactphp\Framework\Bridge\DecodeEncode\TcpDecodeEncode;
 use Reactphp\Framework\Bridge\Connector\WebsocketConnector;
 use Reactphp\Framework\Bridge\Connector\TcpConnector;
 
@@ -25,12 +25,6 @@ final class Client extends AbstractClient
     public static $secretKey;
 
     private $uri;
-
-    /**
-     * @var DecodeEncodeInterface
-     */
-    protected $decodeEncode;
-    protected $decodeEncodeClass;
 
     /**
      * @var DuplexStreamInterface
@@ -46,13 +40,13 @@ final class Client extends AbstractClient
     protected $status = 0;
 
 
-
-    public function __construct($uri, $uuid, DecodeEncodeInterface $decodeEncode = null)
+    public function __construct($uri, $uuid)
     {
         parent::__construct($uuid);
-        $this->decodeEncode = $decodeEncode ?? new WebsocketDecodeEncode;
-        $this->decodeEncodeClass = get_class($this->decodeEncode);
         $this->connections = new SplObjectStorage;
+        if (strpos($uri, '://') === false) {
+            $uri = 'tcp://' . $uri;
+        }
         $this->uri = $uri;
         $this->createConnector($uri);
     }
@@ -65,10 +59,12 @@ final class Client extends AbstractClient
 
         if ($scheme == 'ws' || $scheme == 'wss') {
             $this->setConnector(new WebsocketConnector($this));
+            $this->setDecodeEncode(new WebsocketDecodeEncode);
         } else if ($scheme == 'tcp' || $scheme == 'tls') {
             $this->setConnector(new TcpConnector($this));
+            $this->setDecodeEncode(new TcpDecodeEncode);
         } else {
-            throw new \Exception('scheme not support');
+            throw new \InvalidArgumentException('unsupported scheme ' . $scheme. ' for uri ' . $uri);
         }
     }
 

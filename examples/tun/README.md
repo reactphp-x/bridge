@@ -3,20 +3,20 @@
 
 ## start server
 ```
-php examples/tcp_server.php
+php examples/server.php 8010
 
 ```
 
 ## start client1 (one linux computer)
 ```
 // ip 10.10.10.2
-php examples/tun/tcp_client.php c4b34f0d-44fa-4ef5-9d28-ccef218d74fb 
+php examples/tun/client.php server_ip:8010 c4b34f0d-44fa-4ef5-9d28-ccef218d74fb 
 
 ```
 ## start client2 (another linux computer)
 ```
 // ip 10.10.10.3
-php examples/tun/tcp_client.php 41c5ee60-0628-4b11-9439-a10ba19cbcdd
+php examples/tun/client.php ip:8010 41c5ee60-0628-4b11-9439-a10ba19cbcdd
 
 
 ```

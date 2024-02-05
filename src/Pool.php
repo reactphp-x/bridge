@@ -33,23 +33,16 @@ class Pool extends AbstractConnectionPool implements CallInterface
     const BUSY = 'busy';
     const REMOVING = 'removing';
 
-    protected $decodeEncode;
-    protected $decodeEncodeClass;
-
 
     public function __construct(
         CreateConnectionInterface $createConnection,
         $config = [],
-        LoopInterface $loop = null,
-        DecodeEncodeInterface $decodeEncode = null
+        LoopInterface $loop = null
     ) {
         $this->connectTimeout = $config['connect_timeout'] ?? 3;
         $this->createConnection = $createConnection;
         $this->createConnection->setCall($this);
         $this->connections = new \SplObjectStorage;
-
-        $this->decodeEncode = $decodeEncode ?? new WebsocketDecodeEncode;
-        $this->decodeEncodeClass = get_class($this->decodeEncode);
 
         parent::__construct($config, $loop);
     }
@@ -77,8 +70,10 @@ class Pool extends AbstractConnectionPool implements CallInterface
             $uuidToStream = $this->connections[$connection]['uuidToStream'];
             $uuidToStream[$uuid] = $stream;
             $this->connections[$connection]['uuidToStream'] = $uuidToStream;
-            $this->connections[$connection]['controlUuidToStreamUuids'][$this->createConnection->getControlUuidByTunnelStream($connection)][] = $uuid;
-            $connection->write($this->decodeEncode->encode([
+            $controlUuidToStreamUuids = $this->connections[$connection]['controlUuidToStreamUuids'];
+            $controlUuidToStreamUuids[$this->createConnection->getControlUuidByTunnelStream($connection)][] = $uuid;
+            $this->connections[$connection]['controlUuidToStreamUuids'] = $controlUuidToStreamUuids;
+            $connection->write($this->connections[$connection]['decodeEncode']->encode([
                 'cmd' => 'callback',
                 'uuid' => $uuid,
                 'data' => [
@@ -87,7 +82,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
             ]));
 
             $write->on('data', function ($data) use ($uuid, $connection) {
-                $connection->write($this->decodeEncode->encode([
+                $connection->write($this->connections[$connection]['decodeEncode']->encode([
                     'cmd' => 'data',
                     'uuid' => $uuid,
                     'data' => $data
@@ -99,7 +94,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
                 if ($this->connections->contains($connection)) {
                     if ($this->connections[$connection]['streams']->contains($stream)) {
                         $this->connections[$connection]['streams']->detach($stream);
-                        $connection->write($this->decodeEncode->encode([
+                        $connection->write($this->connections[$connection]['decodeEncode']->encode([
                             'cmd' => 'error',
                             'uuid' => $uuid,
                             'data' => [
@@ -117,22 +112,22 @@ class Pool extends AbstractConnectionPool implements CallInterface
             $write->on('end', function () use ($connection, $stream, $uuid) {
                 if ($this->connections->contains($connection)) {
                     if ($this->connections[$connection]['streams']->contains($stream)) {
-                        $this->connections[$connection]['streams']->detach($stream);
-                        $connection->write($this->decodeEncode->encode([
+                        $connection->write($this->connections[$connection]['decodeEncode']->encode([
                             'cmd' => 'end',
                             'uuid' => $uuid,
                         ]));
+                        $this->connections[$connection]['streams']->detach($stream);
                     }
                 }
             });
             $stream->on('close', function () use ($connection, $stream, $uuid) {
                 if ($this->connections->contains($connection)) {
                     if ($this->connections[$connection]['streams']->contains($stream)) {
-                        $this->connections[$connection]['streams']->detach($stream);
-                        $connection->write($this->decodeEncode->encode([
+                        $connection->write($this->connections[$connection]['decodeEncode']->encode([
                             'cmd' => 'close',
                             'uuid' => $uuid,
                         ]));
+                        $this->connections[$connection]['streams']->detach($stream);
                     }
                     $uuidToStream = $this->connections[$connection]['uuidToStream'];
                     unset($uuidToStream[$uuid]);
@@ -270,8 +265,9 @@ class Pool extends AbstractConnectionPool implements CallInterface
     protected function createConnection($params = null)
     {
         $this->log('createConnection');
-        return $this->createConnection->createConnection($params, $this->connectTimeout)->then(function ($connection) {
-            $this->addConnection($connection);
+        return $this->createConnection->createConnection($params, $this->connectTimeout)->then(function ($data) {
+            list($connection, $decodeEncodeClass) = $data;
+            $this->addConnection($connection, $decodeEncodeClass);
             return $connection;
         }, function ($e) {
             $this->current_connections--;
@@ -370,12 +366,12 @@ class Pool extends AbstractConnectionPool implements CallInterface
         return !$this->connections->contains($connection);
     }
 
-    protected function addConnection($connection)
+    protected function addConnection($connection, $decodeEncodeClass)
     {
         $this->connections->attach($connection, new Info([
             'status' => self::BUSY,
             'streams' => new \SplObjectStorage,
-            'decodeEncode' => new $this->decodeEncodeClass,
+            'decodeEncode' => new $decodeEncodeClass,
             'uuidToStream' => [],
             'controlUuidToStreamUuids' => [],
         ]));
@@ -443,7 +439,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
                 }
             }
         } else if ($cmd == 'ping') {
-            $connection->write($this->decodeEncode->encode([
+            $connection->write($this->connections[$connection]['decodeEncode']->encode([
                 'cmd' => 'pong',
                 'uuid' => $uuid,
             ]));
@@ -461,7 +457,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $uuid = Uuid::uuid4()->toString();
         $deferred = new Deferred;
         $this->uuidToDeferred[$uuid] = $deferred;
-        $connection->write($this->decodeEncode->encode([
+        $connection->write($this->connections[$connection]['decodeEncode']->encode([
             'cmd' => 'ping',
             'uuid' => $uuid,
         ]));

@@ -1,21 +1,9 @@
 <?php
 
-require __DIR__ . '/../../vendor/autoload.php';
-
-use Reactphp\Framework\Bridge\Client;
-use Reactphp\Framework\Bridge\DecodeEncode\TcpDecodeEncode;
 use React\EventLoop\Loop;
 use function React\Async\async;
 
-Client::$debug = true;
-$uuid = $argv[1] ?? 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb';
-echo "uuid: $uuid\n";
-
-$uri = 'tcp://192.168.1.9:8010';
-$client = new Client($uri, $uuid, new TcpDecodeEncode);
-$client->start();
-
-
+$client = require __DIR__ . '/../client.php';
 
 function run_command($Command)
 {

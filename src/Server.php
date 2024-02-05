@@ -21,10 +21,6 @@ class Server implements ServerInterface
 
     public static $debug = false;
 
-    protected $decodeEncode;
-    protected $decodeEncodeClass;
-
-
     protected $call;
     protected $verify;
     protected $clients;
@@ -35,12 +31,9 @@ class Server implements ServerInterface
 
     protected $uuidToDeferred = [];
 
-    public function __construct(VerifyInterface $verify, DecodeEncodeInterface $decodeEncode = null)
+    public function __construct(VerifyInterface $verify)
     {
         $this->verify = $verify;
-
-        $this->decodeEncode = $decodeEncode ?? new WebsocketDecodeEncode;
-        $this->decodeEncodeClass = get_class($this->decodeEncode);
 
         // $this->uuids = $uuids;
         $this->clients = new \SplObjectStorage;
@@ -62,6 +55,13 @@ class Server implements ServerInterface
 
     public function onOpen(DuplexStreamInterface $stream, $info = null)
     {
+        if (!isset($info['decodeEncodeClass'])) {
+            // error
+            throw new \InvalidArgumentException('decodeEncodeClass is required');
+        }
+
+        $decodeEncode = new $info['decodeEncodeClass'];
+
         $stream->on('data', function ($buffer) use ($stream) {
             if (self::$debug) {
                 echo "=====> onMessage <========" . "\n";
@@ -69,7 +69,7 @@ class Server implements ServerInterface
             }
         });
 
-        $stream->write($this->decodeEncode->encode([
+        $stream->write($decodeEncode->encode([
             'cmd' => 'init',
             'uuid' => Uuid::uuid4()->toString(),
             'data' => [
@@ -80,9 +80,11 @@ class Server implements ServerInterface
 
         $hash = spl_object_hash($stream);
         echo "New connection! {$hash}\n";
-        $this->clients->attach($stream);
+        $this->clients->attach($stream, new Info($info+[
+            'decodeEncode' => $decodeEncode,
+        ]));
         $this->tmpConnections->attach($stream, new Info([
-            'decodeEncode' =>  new $this->decodeEncodeClass,
+            'decodeEncode' =>  $decodeEncode,
         ]));
         echo "connection count({$this->clients->count()})\n";
     }
@@ -132,12 +134,12 @@ class Server implements ServerInterface
         // 注册控制器
         if ($cmd == 'registerController') {
             echo "$uuid registerController\n";
-            if (!$this->verify->verify($uuid)){
+            if (!$this->verify->verify($uuid)) {
                 $stream->close();
                 echo "$uuid registerController fail\n";
                 return;
             }
-            
+
             if (isset($this->uuidToControlerConnections[$uuid]) && $this->uuidToControlerConnections[$uuid]->count() >= 2) {
                 $stream->close();
                 return;
@@ -159,7 +161,7 @@ class Server implements ServerInterface
             $this->uuidToControlerConnections[$uuid]->attach($stream);
 
             $this->emit($uuid . '_controllerConnected', [$stream]);
-            $stream->write($this->decodeEncode->encode([
+            $stream->write($this->clients[$stream]['decodeEncode']->encode([
                 'cmd' => 'controllerConnected',
                 'uuid' => $uuid,
                 'data' => [
@@ -190,7 +192,7 @@ class Server implements ServerInterface
         $uuid = $message['uuid'] ?? null;
         $cmd = $message['cmd'] ?? null;
         if ($cmd == 'ping') {
-            $controlStream->write($this->decodeEncode->encode([
+            $controlStream->write($this->clients[$controlStream]['decodeEncode']->encode([
                 'cmd' => 'pong',
                 'uuid' => $uuid,
             ]));
@@ -203,7 +205,7 @@ class Server implements ServerInterface
                         $something = $message['data']['params']['something'] ?? null;
                         $peerUuid = $this->verify->getUuidBySomething($something);
                     }
-                    if (!$peerUuid || !$this->verify->verify($peerUuid)){
+                    if (!$peerUuid || !$this->verify->verify($peerUuid)) {
                         echo "peerUuid verify fail\n";
                         return;
                     }
@@ -318,7 +320,7 @@ class Server implements ServerInterface
         $event = null;
         $fn = function ($controlConnection) use ($tunnelUuid, &$control) {
             $control = $controlConnection;
-            $controlConnection->write($this->decodeEncode->encode([
+            $controlConnection->write($this->clients[$control]['decodeEncode']->encode([
                 'cmd' => 'createTunnelConnection',
                 'uuid' => $tunnelUuid
             ]));
@@ -349,7 +351,7 @@ class Server implements ServerInterface
             $this->controllerConnections[$control]['tunnelConnections']->attach($connection, new Info([
                 'request_number' => 0,
             ]));
-            return $connection;
+            return [$connection, $this->clients[$connection]['decodeEncodeClass']];
         }, function ($e) use ($tunnelUuid, $fn, $event, $uuids) {
             if ($fn) {
                 $this->removeListener($event, $fn);

@@ -30,4 +30,19 @@ class Info implements \ArrayAccess
     {
         unset($this->info[$offset]);
     }
+
+    public function __set($name, $value)
+    {
+        $this->info[$name] = $value;
+    }
+
+    public function __get($name)
+    {
+        return isset($this->info[$name]) ? $this->info[$name] : null;
+    }
+
+    public function toArray()
+    {
+        return $this->info;
+    }
 }

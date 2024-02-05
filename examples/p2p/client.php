@@ -2,28 +2,23 @@
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-use Reactphp\Framework\Bridge\Client;
 use function React\Async\async;
-use function React\Async\await;
 use React\Promise\Deferred;
 use React\EventLoop\Loop;
 
-Client::$debug = true;
-$uri = 'ws://192.168.1.9:8010';
-// $client = new Client($uri, 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb');
-$client = new Client($uri, 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb');
-$client->start();
+$client = require __DIR__ .'/../client.php';
 
 async(function () use ($client) {
+    global $argv;
     $deferred = new Deferred();
     $stream = $client->call(function ($stream, $info) {
         $stream->write([
             'local_address' => $info['local_address'],
-            'remote_address' => $info['remote_address'],
+            'remote_address' => str_replace('tcp://', '',$info['remote_address']) ,
         ]);
         return $stream;
     }, [
-        'uuid' => 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb'
+        'uuid' => $argv[2] ?? 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb'
     ]);
     $self = [];
     $peer = [];
@@ -48,11 +43,11 @@ async(function () use ($client) {
     $peerStream = $client->call(function ($stream, $info) {
         $stream->write([
             'local_address' => $info['local_address'],
-            'remote_address' => $info['remote_address'],
+            'remote_address' => str_replace('tcp://', '',$info['remote_address']),
         ]);
         return $stream;
     }, [
-        'uuid' => '8d24e2ba-c6f8-4bb6-8838-cacd37f64165'
+        'uuid' => $argv[3] ?? '8d24e2ba-c6f8-4bb6-8838-cacd37f64165'
     ]);
 
     $peerStream->on('data', function ($data) use (&$self, &$peer, $deferred) {
@@ -78,6 +73,7 @@ async(function () use ($client) {
         list($self, $peer) = $data;
         var_dump($self, $peer, 'hello world');
         async(function ($self, $peer) use ($client) {
+            global $argv;
             $stream = $client->call(function ($stream, $info) use ($self, $peer) {
                 echo 'start create local udp server' . "\n";
                 $factory = new React\Datagram\Factory();
@@ -87,7 +83,7 @@ async(function () use ($client) {
                     $server->on('message', function ($message, $address, $server) use ($stream) {
                         //$server->send('hello ' . $address . '! echo: ' . $message, $address);
                         $stream->write('receive peer');
-                        echo 'client ' . $address . ': ' . $message . PHP_EOL;
+                        echo 'from client ' . $address . ': ' . $message . PHP_EOL;
                     });
                     $i = 0;
                     $timer = Loop::addPeriodicTimer(1, function () use ($server, $peer, &$i) {
@@ -100,7 +96,7 @@ async(function () use ($client) {
                 });
                 return $stream;
             }, [
-                'uuid' => 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb'
+                'uuid' => $argv[2] ?? 'c4b34f0d-44fa-4ef5-9d28-ccef218d74fb'
             ]);
             $stream->on('data', function ($data) use ($stream) {
                 $stream->end();
@@ -108,6 +104,7 @@ async(function () use ($client) {
         })($self, $peer);
 
         async(function ($self, $peer) use ($client) {
+            global $argv;
             $peerStream = $client->call(function ($stream, $info) use ($self, $peer) {
                 echo 'start create peer udp server' . "\n";
                 $factory = new React\Datagram\Factory();
@@ -122,7 +119,7 @@ async(function () use ($client) {
 
                         // $server->send('hello ' . $address . '! echo: ' . $message, $address);
 
-                        echo 'client ' . $address . ': ' . $message . PHP_EOL;
+                        echo 'from client ' . $address . ': ' . $message . PHP_EOL;
                     });
                     $timer = Loop::addPeriodicTimer(1, function () use ($server, $self) {
                         $server->send('hello world', $self['remote_address']);
@@ -133,7 +130,7 @@ async(function () use ($client) {
                 });
                 return $stream;
             }, [
-                'uuid' => '8d24e2ba-c6f8-4bb6-8838-cacd37f64165'
+                'uuid' => $argv[3] ?? '8d24e2ba-c6f8-4bb6-8838-cacd37f64165'
             ]);
             $peerStream->on('data', function ($data) use ($peerStream) {
                 $peerStream->end();

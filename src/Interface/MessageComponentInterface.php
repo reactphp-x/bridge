@@ -25,11 +25,11 @@ interface MessageComponentInterface
     /**
      * If there is an error with one of the sockets, or somewhere in the application where an Exception is thrown,
      * the Exception is sent back down the stack, handled by the Server and bubbled back up the application through this method
-     * @param  DuplexStreamInterface $conn
+     * @param  DuplexStreamInterface $stream
      * @param  \Exception          $e
      * @throws \Exception
      */
-    function onError(DuplexStreamInterface $conn, \Exception $e);
+    function onError(DuplexStreamInterface $stream, \Exception $e);
 
     /**
      * Triggered when a client sends data through the socket

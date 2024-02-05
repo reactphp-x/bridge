@@ -18,7 +18,7 @@ class Tcp
         $socket->on('connection', function ($conn) {
             $this->server->onOpen($conn, [
                 'remote_address' => $conn->getRemoteAddress(),
-                'local_address' => $conn->getLocalAddress(),
+                'local_address' =>  $conn->getLocalAddress(),
             ]);
             $conn->on('data', function ($data) use ($conn) {
                 $this->handleData($conn, $data);

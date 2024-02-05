@@ -1,18 +1,18 @@
 ## start server
 ```
-php examples/tcp_server.php
+php examples/server.php 8010 
 
 ```
 
 ## start client1
 ```
-php examples/tcp_client.php
+php examples/client.php server:ip:8010 8d24e2ba-c6f8-4bb6-8838-cacd37f64165
 
 ```
 
 ## start client2
 ```
-php examples/ipaddress/call_client_ip_address.php
+php examples/ipaddress/client.php server:ip:8010 c4b34f0d-44fa-4ef5-9d28-ccef218d74fb 8d24e2ba-c6f8-4bb6-8838-cacd37f64165
 
 ```
 

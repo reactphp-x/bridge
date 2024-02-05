@@ -11,7 +11,7 @@ use Reactphp\Framework\Bridge\Tcp\TcpBridge;
 use Reactphp\Framework\Bridge\BridgeStrategy;
 use Reactphp\Framework\Bridge\Io\Tcp;
 
-Server::$debug = true;
+// Server::$debug = true;
 
 $server = new Server(new VerifyUuid([
     '8d24e2ba-c6f8-4bb6-8838-cacd37f64165' => '10.10.10.1',//value 是自定义的标识符，可以是空

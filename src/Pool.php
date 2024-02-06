@@ -61,6 +61,8 @@ class Pool extends AbstractConnectionPool implements CallInterface
     public function call($closure, $params = null, $data = [])
     {
         $this->log('call');
+        $this->log($params);
+        $this->log($data);
         $read = new Stream\ThroughStream;
         $write = new Stream\ThroughStream;
         $stream = new Stream\CompositeStream($read, $write);

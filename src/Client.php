@@ -142,9 +142,14 @@ final class Client extends AbstractClient
             });
         } elseif ($this->connections->contains($stream)) {
             echo 'tunnelConnection close' . PHP_EOL;
+            $tunnelStreams = [];
             foreach ($this->connections[$stream]['streams'] as $tunnelStream) {
-                $tunnelStream->close();
+                $tunnelStreams[] = $tunnelStream;
             }
+            foreach ($tunnelStreams as $tmpTunnelStream) {
+                $tmpTunnelStream->close();
+            }
+            echo 'tunnelConnection closed' . PHP_EOL;
             $this->connections->detach($stream);
         }
     }

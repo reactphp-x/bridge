@@ -10,10 +10,9 @@ use Ramsey\Uuid\Uuid;
 use React\Stream\DuplexStreamInterface;
 use Reactphp\Framework\Bridge\Interface\ServerInterface;
 use Reactphp\Framework\Bridge\Interface\CallInterface;
-use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
 use Reactphp\Framework\Bridge\Info;
 use Reactphp\Framework\Bridge\Interface\VerifyInterface;
-use Reactphp\Framework\Bridge\DecodeEncode\WebsocketDecodeEncode;
+use React\EventLoop\Loop;
 
 class Server implements ServerInterface
 {
@@ -80,12 +79,11 @@ class Server implements ServerInterface
 
         $hash = spl_object_hash($stream);
         echo "New connection! {$hash}\n";
-        $this->clients->attach($stream, new Info($info+[
+        $this->clients->attach($stream, new Info($info + [
             'decodeEncode' => $decodeEncode,
+            'active_time' => time(),
         ]));
-        $this->tmpConnections->attach($stream, new Info([
-            'decodeEncode' =>  $decodeEncode,
-        ]));
+        $this->tmpConnections->attach($stream);
         echo "connection count({$this->clients->count()})\n";
     }
 
@@ -93,7 +91,7 @@ class Server implements ServerInterface
     {
         // tmp data
         if ($this->tmpConnections->contains($stream)) {
-            if ($messages = $this->tmpConnections[$stream]['decodeEncode']->decode($msg)) {
+            if ($messages = $this->clients[$stream]['decodeEncode']->decode($msg)) {
                 foreach ($messages as $message) {
                     $this->handleTmpData($stream, $message);
                 }
@@ -101,7 +99,7 @@ class Server implements ServerInterface
         }
         // control data
         else if ($this->controllerConnections->contains($stream)) {
-            if ($messages = $this->controllerConnections[$stream]['decodeEncode']->decode($msg)) {
+            if ($messages = $this->clients[$stream]['decodeEncode']->decode($msg)) {
                 foreach ($messages as $message) {
                     $this->handleControlData($stream, $message);
                 }
@@ -115,6 +113,10 @@ class Server implements ServerInterface
                 $this->controllerConnections[$control]['request_number'] = $this->controllerConnections[$control]['request_number'] + 1;
                 $this->controllerConnections[$control]['tunnelConnections'][$stream]['request_number'] = $this->controllerConnections[$control]['tunnelConnections'][$stream]['request_number'] + 1;
             }
+        }
+
+        if ($this->clients->contains($stream)) {
+            $this->clients[$stream]['active_time'] = time();
         }
     }
 
@@ -152,7 +154,6 @@ class Server implements ServerInterface
             }
             $this->controllerConnections->attach($stream, new Info([
                 'request_number' => 0,
-                'decodeEncode' => $this->tmpConnections[$stream]['decodeEncode'],
                 'uuid' => $uuid,
                 'tunnelConnections' => new \SplObjectStorage,
             ]));
@@ -170,6 +171,7 @@ class Server implements ServerInterface
                     'something' => $this->verify->getSomethingByUuid($uuid),
                 ]
             ]));
+            // ping
             echo "$uuid registerController success\n";
         } else if ($cmd == 'registerTunnel') {
             if (isset($this->uuidToDeferred[$uuid])) {
@@ -198,7 +200,13 @@ class Server implements ServerInterface
                 'cmd' => 'pong',
                 'uuid' => $uuid,
             ]));
-        } else if ($cmd === 'callback_peer_stream') {
+        } 
+        else if ($cmd == 'pong') {
+            if (isset($this->uuidToDeferred[$uuid])) {
+                $this->uuidToDeferred[$uuid]->resolve(true);
+            }
+        }
+        else if ($cmd === 'callback_peer_stream') {
             async(function () use ($uuid, $message) {
                 try {
 
@@ -355,7 +363,7 @@ class Server implements ServerInterface
             $this->controllerConnections[$control]['tunnelConnections']->attach($connection, new Info([
                 'request_number' => 0,
             ]));
-            return [$connection, $this->clients[$connection]['decodeEncodeClass']];
+            return [$connection, $this->clients[$connection]['decodeEncode']];
         }, function ($e) use ($tunnelUuid, $fn, $event, $uuids) {
             if ($fn) {
                 $this->removeListener($event, $fn);
@@ -395,5 +403,53 @@ class Server implements ServerInterface
             }
         }
         return $currentConnection;
+    }
+
+    public function enableKeepAlive($interval = 30)
+    {
+        Loop::addPeriodicTimer($interval, function () use ($interval) {
+            foreach ($this->clients as $client) {
+                if ($this->tunnelConnections->contains($client)) {
+                    // tunnel connection ping
+                    if (method_exists($this->call, '_ping')) {
+                        $this->call->_ping($client)->then(null, function ($e) {
+                            echo "tunnel ping fail\n";
+                            echo $e->getMessage() . "\n";
+                        });
+                    }
+                } else {
+                    $info = $this->clients[$client];
+                    if (time() - $info['active_time'] > $interval) {
+                        $this->ping($client, $info['decodeEncode'])->then(null, function ($e) use ($client) {
+                            echo "client ping fail\n";
+                            echo $e->getMessage() . "\n";
+                            $client->close();
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    protected function ping($conn, $decodeEncode)
+    {
+        $deferred = new Deferred;
+        $uuid = Uuid::uuid4()->toString();
+        $conn->write($decodeEncode->encode([
+            'cmd' => 'ping',
+            'uuid' => $uuid,
+        ]));
+        $this->uuidToDeferred[$uuid] = $deferred;
+        return \React\Promise\Timer\timeout($deferred->promise(), 3)->then(function () use ($uuid) {
+            unset($this->uuidToDeferred[$uuid]);
+        }, function ($e) use ($uuid) {
+            unset($this->uuidToDeferred[$uuid]);
+            if ($e instanceof TimeoutException) {
+                throw new \RuntimeException(
+                    'Connection timed out'
+                );
+            }
+            throw $e;
+        });
     }
 }

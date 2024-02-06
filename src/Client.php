@@ -97,13 +97,14 @@ final class Client extends AbstractClient
             ]));
         }
 
-        $timer = Loop::addPeriodicTimer(10, function () use ($stream, $msg) {
+        $timer = Loop::addPeriodicTimer(30, function () use ($stream, $msg) {
             $this->ping($stream)->then(function () {
             }, function ($e) use ($stream, $msg) {
                 echo $msg . ' ping error ' . $e->getMessage() . PHP_EOL;
                 $stream->close();
             });
         });
+
         $stream->on('close', function () use ($timer) {
             Loop::cancelTimer($timer);
         });
@@ -157,7 +158,7 @@ final class Client extends AbstractClient
             'uuid' => $uuid,
         ]));
         $this->uuidToDeferred[$uuid] = $deferred;
-        return \React\Promise\Timer\timeout($deferred->promise(), 1)->then(function () use ($uuid) {
+        return \React\Promise\Timer\timeout($deferred->promise(), 3)->then(function () use ($uuid) {
             unset($this->uuidToDeferred[$uuid]);
         }, function ($e) use ($uuid) {
             unset($this->uuidToDeferred[$uuid]);

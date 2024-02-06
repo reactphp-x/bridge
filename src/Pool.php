@@ -292,7 +292,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $this->log('createConnection');
         $uuid = $params['uuid'];
         return $this->createConnection->createConnection($params, $this->connectTimeout)->then(function ($data) use ($uuid) {
-            list($connection, $decodeEncodeClass) = $data;
+            list($connection, $decodeEncode) = $data;
 
             // 看下是否有在这一时刻等待创建链接的请求
             unset($this->uuidIsConnecting[$uuid]);
@@ -302,7 +302,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
                 $deferred->resolve($connection);
             }
 
-            $this->addConnection($connection, $decodeEncodeClass);
+            $this->addConnection($connection, $decodeEncode);
             return $connection;
         }, function ($e) use ($uuid) {
 
@@ -418,12 +418,12 @@ class Pool extends AbstractConnectionPool implements CallInterface
         return !$this->connections->contains($connection);
     }
 
-    protected function addConnection($connection, $decodeEncodeClass)
+    protected function addConnection($connection, $decodeEncode)
     {
         $this->connections->attach($connection, new Info([
             'status' => self::BUSY,
             'streams' => new \SplObjectStorage,
-            'decodeEncode' => new $decodeEncodeClass,
+            'decodeEncode' => $decodeEncode,
             'uuidToStream' => [],
             'controlUuidToStreamUuids' => [],
         ]));
@@ -504,7 +504,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
 
     protected $uuidToDeferred = [];
 
-    protected function _ping($connection)
+    public function _ping($connection)
     {
         $uuid = Uuid::uuid4()->toString();
         $deferred = new Deferred;
@@ -514,7 +514,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
             'uuid' => $uuid,
         ]));
         $that = $this;
-        return \React\Promise\Timer\timeout($deferred->promise(), 2)->then(function () use ($uuid, $connection, $that) {
+        return \React\Promise\Timer\timeout($deferred->promise(), 3)->then(function () use ($uuid, $connection, $that) {
             unset($this->uuidToDeferred[$uuid]);
             if (!$that->idle_connections->contains($connection)) {
                 $that->releaseConnection($connection);

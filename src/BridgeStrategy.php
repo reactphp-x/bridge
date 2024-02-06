@@ -36,10 +36,11 @@ class BridgeStrategy implements MessageComponentInterface
     public function onClose(DuplexStreamInterface $stream, $reason = null)
     {
         if ($this->streams->contains($stream)) {
-            if ($this->streams[$stream]['component']) {
-                $this->streams[$stream]['component']->onClose($stream, $reason);
-            }
+            $component = $this->streams[$stream]['component'];
             $this->streams->detach($stream);
+            if ($component) {
+                $component->onClose($stream, $reason);
+            }
         }
     }
 

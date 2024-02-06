@@ -22,6 +22,7 @@ $server = new Server(new VerifyUuid([
 $pool = new Pool($server, [
     'max_connections' => 20,
     'connection_timeout' => 2,
+    'uuid_max_tunnel' => 1,
     'keep_alive' => 5,
     'wait_timeout' => 3
 ]);

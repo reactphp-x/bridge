@@ -2,11 +2,11 @@
 
 namespace Reactphp\Framework\Bridge;
 
-use Reactphp\Framework\Bridge\DecodeEncode\WebsocketDecodeEncode;
+use Evenement\EventEmitterInterface;
+use Evenement\EventEmitterTrait;
 use Reactphp\Framework\Pool\AbstractConnectionPool;
 use Reactphp\Framework\Bridge\Interface\CallInterface;
 use Reactphp\Framework\Bridge\Interface\CreateConnectionInterface;
-use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
 use Reactphp\Framework\Bridge\Info;
 use React\EventLoop\LoopInterface;
 use React\EventLoop\Loop;
@@ -27,12 +27,15 @@ class Pool extends AbstractConnectionPool implements CallInterface
     protected $connections;
     protected $uri;
     protected $createConnection;
+    protected $uuidMaxTunnel = 1;
 
     const CLOSE = 'close';
     const IDLE = 'idle';
     const BUSY = 'busy';
     const REMOVING = 'removing';
 
+    private $uuidIsConnecting = [];
+    private $uuidToDeferreds = [];
 
     public function __construct(
         CreateConnectionInterface $createConnection,
@@ -43,7 +46,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $this->createConnection = $createConnection;
         $this->createConnection->setCall($this);
         $this->connections = new \SplObjectStorage;
-
+        $this->uuidMaxTunnel = $config['uuid_max_tunnel'] ?? 1;
         parent::__construct($config, $loop);
     }
 
@@ -175,15 +178,20 @@ class Pool extends AbstractConnectionPool implements CallInterface
         }
 
         $uuid = $params['uuid'] ?? '';
+
+        if (!$uuid) {
+            return reject(new Exception('uuid is required'));
+        }
+
         $uuids = explode(',', $uuid);
 
         // 说明所有连接都是繁忙的，去重用数量最少的
-        if ($this->current_connections >= $this->max_connections && $this->idle_connections->count() == 0 && $this->connections->count() > 0) {
-            $currentConn = $this->getLowStreamCountConnection($uuids);
-            if ($currentConn) {
-                return \React\Promise\resolve($currentConn);
-            }
-        }
+        // if ($this->current_connections >= $this->max_connections && $this->idle_connections->count() == 0 && $this->connections->count() > 0) {
+        //     $currentConn = $this->getLowStreamCountConnection($uuids);
+        //     if ($currentConn) {
+        //         return \React\Promise\resolve($currentConn);
+        //     }
+        // }
 
 
 
@@ -204,8 +212,22 @@ class Pool extends AbstractConnectionPool implements CallInterface
             }
         }
 
+        // uuid通道的最大数量是1，去看下是否超过了最大连接数，如果过超过则返回最小数量的连接，没超过，走下面的创建链接
+        $currentConn = $this->getLowStreamCountConnection($uuids, $this->uuidMaxTunnel);
+        if ($currentConn) {
+            return \React\Promise\resolve($currentConn);
+        }
+
         // 说明没有空闲连接了，去创建连接
         if ($this->current_connections < $this->max_connections) {
+
+            if (isset($this->uuidIsConnecting[$uuid])) {
+                $deferred = new Deferred;
+                $this->uuidToDeferred[$uuid][] = $deferred;
+                return $deferred->promise();
+            }
+            $this->uuidIsConnecting[$uuid] = true;
+
             $this->current_connections++;
             return resolve($this->createConnection($params));
         }
@@ -237,7 +259,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         });
     }
 
-    protected function getLowStreamCountConnection($uuids)
+    protected function getLowStreamCountConnection($uuids, $overNum = 0)
     {
         $connections = [];
         foreach ($this->connections as $connection) {
@@ -247,6 +269,10 @@ class Pool extends AbstractConnectionPool implements CallInterface
         }
 
         if (count($connections) == 0) {
+            return null;
+        }
+
+        if ($overNum && count($connections) < $overNum) {
             return null;
         }
 
@@ -261,15 +287,33 @@ class Pool extends AbstractConnectionPool implements CallInterface
         return $currentConn;
     }
 
-
     protected function createConnection($params = null)
     {
         $this->log('createConnection');
-        return $this->createConnection->createConnection($params, $this->connectTimeout)->then(function ($data) {
+        $uuid = $params['uuid'];
+        return $this->createConnection->createConnection($params, $this->connectTimeout)->then(function ($data) use ($uuid) {
             list($connection, $decodeEncodeClass) = $data;
+
+            // 看下是否有在这一时刻等待创建链接的请求
+            unset($this->uuidIsConnecting[$uuid]);
+            $deferreds = $this->uuidToDeferreds[$uuid] ?? [];
+            unset($this->uuidToDeferreds[$uuid]);
+            foreach ($deferreds as $deferred) {
+                $deferred->resolve($connection);
+            }
+
             $this->addConnection($connection, $decodeEncodeClass);
             return $connection;
-        }, function ($e) {
+        }, function ($e) use ($uuid) {
+
+            // 看下是否有在这一时刻等待创建链接的请求
+            unset($this->uuidIsConnecting[$uuid]);
+            $deferreds = $this->uuidToDeferreds[$uuid] ?? [];
+            unset($this->uuidToDeferreds[$uuid]);
+            foreach ($deferreds as $deferred) {
+                $deferred->reject($e);
+            }
+            
             $this->current_connections--;
             throw $e;
         });
@@ -356,8 +400,16 @@ class Pool extends AbstractConnectionPool implements CallInterface
             $deferred = $this->wait_queue->current();
             $params = $this->wait_queue[$deferred];
             $this->wait_queue->detach($deferred);
-            $this->current_connections++;
-            $deferred->resolve($this->createConnection($params));
+
+            $uuid = $params['uuid'];
+            if (isset($this->uuidIsConnecting[$uuid])) {
+                $this->uuidToDeferred[$uuid][] = $deferred;
+            } else {
+                $this->uuidIsConnecting[$uuid] = true;
+                $this->current_connections++;
+                $deferred->resolve($this->createConnection($params));
+            }
+           
         }
     }
 

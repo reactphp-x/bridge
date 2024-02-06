@@ -307,7 +307,9 @@ class Server implements ServerInterface
 
     public function onError(DuplexStreamInterface $stream, \Exception $e)
     {
+        echo "Server onError\n";
         echo "An error has occurred: {$e->getMessage()}\n";
+        echo $e->getTraceAsString() . "\n";
         $stream->close();
     }
 

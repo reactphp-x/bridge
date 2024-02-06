@@ -141,10 +141,12 @@ class Server implements ServerInterface
             }
 
             if (isset($this->uuidToControlerConnections[$uuid]) && $this->uuidToControlerConnections[$uuid]->count() >= 2) {
+                echo "$uuid registerController fail over 2\n";
                 $stream->close();
                 return;
             }
             if ($this->controllerConnections->contains($stream)) {
+                echo "$uuid registerController fail already register\n";
                 $stream->close();
                 return;
             }

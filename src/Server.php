@@ -300,6 +300,7 @@ class Server implements ServerInterface
                 unset($this->uuidToControlerConnections[$uuid]);
             }
         } else if ($this->tunnelConnections->contains($stream)) {
+            echo "tunnelConnection onClose\n";
             $control = $this->tunnelConnections[$stream]['control'];
             if ($this->controllerConnections->contains($control)) {
                 $this->controllerConnections[$control]['tunnelConnections']->detach($stream);

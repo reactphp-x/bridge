@@ -16,7 +16,7 @@ class Info implements \ArrayAccess
         return isset($this->info[$offset]);
     }
 
-    public function offsetGet($offset)
+    public function offsetGet(mixed $offset): mixed
     {
         return isset($this->info[$offset]) ? $this->info[$offset] : null;
     }

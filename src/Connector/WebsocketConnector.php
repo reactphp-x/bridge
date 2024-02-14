@@ -66,7 +66,7 @@ class WebsocketConnector implements ConnectorInterface
     private function getQuery($uri)
     {
         $query = parse_url($uri, PHP_URL_QUERY);
-        $array =array_filter(explode('&', $query));
+        $array =array_filter(explode('&', $query ?: ''));
         $result = [];
         foreach ($array as $item) {
             $tmp = explode('=', $item);

@@ -178,6 +178,7 @@ class Server implements ServerInterface
                 $this->tmpConnections->detach($stream);
                 $deferred = $this->uuidToDeferred[$uuid];
                 $deferred->resolve($stream);
+                echo "registerTunnel success\n";
             } else {
                 $stream->close();
             }

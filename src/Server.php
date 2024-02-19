@@ -201,13 +201,11 @@ class Server implements ServerInterface
                 'cmd' => 'pong',
                 'uuid' => $uuid,
             ]));
-        } 
-        else if ($cmd == 'pong') {
+        } else if ($cmd == 'pong') {
             if (isset($this->uuidToDeferred[$uuid])) {
                 $this->uuidToDeferred[$uuid]->resolve(true);
             }
-        }
-        else if ($cmd === 'callback_peer_stream') {
+        } else if ($cmd === 'callback_peer_stream') {
             async(function () use ($uuid, $message) {
                 try {
 
@@ -221,9 +219,7 @@ class Server implements ServerInterface
                         return;
                     }
 
-                    $stream = $this->call->call(function ($stream) {
-                        return $stream;
-                    }, [
+                    $stream = $this->call->call($message['data']['self_serialized'], [
                         'uuid' => $uuid,
                     ], [
                         'event' => $message['data']['event'] ?? ''
@@ -234,7 +230,7 @@ class Server implements ServerInterface
                         $data .= $buffer;
                     });
 
-                    $peerStream = $this->call->call($message['data']['serialized'] ?? '', [
+                    $peerStream = $this->call->call($message['data']['peer_serialized'] ?? '', [
                         'uuid' => $peerUuid,
                     ], $message['data']['data'] ?? []);
 

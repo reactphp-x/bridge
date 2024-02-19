@@ -4,7 +4,6 @@
 use React\Promise\Deferred;
 
 $client = require __DIR__ . '/../client.php';
-
 $deferred = new Deferred();
 
 $self = [];

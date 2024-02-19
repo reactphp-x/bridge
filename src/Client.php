@@ -395,19 +395,24 @@ final class Client extends AbstractClient
     public function call($closure, $params = null, $data = [])
     {
 
-        $serialized = is_string($closure) ? $closure : SerializableClosure::serialize($closure->bindTo(null, null));
+        $selfClosure = function($stream) {
+            return $stream;
+        };
+        $selfSerialized = SerializableClosure::serialize($selfClosure->bindTo(null, null), static::$secretKey);
+        $peerSerialized = is_string($closure) ? $closure : SerializableClosure::serialize($closure->bindTo(null, null), static::$secretKey);
         $error = null;
 
         $deferred = new Deferred;
         $uuid = Uuid::uuid4()->toString();
         $this->uuidToDeferred[$uuid] = $deferred;
-        $fn = function ($controlConnection) use ($serialized, $params, $uuid, $data) {
+        $fn = function ($controlConnection) use ($selfSerialized, $peerSerialized, $params, $uuid, $data) {
             $controlConnection->write($this->decodeEncode->encode([
                 'cmd' => 'callback_peer_stream',
                 'uuid' => $this->uuid,
                 'data' => [
                     'event' => $uuid . '_' . 'callback_peer_stream',
-                    'serialized' => $serialized,
+                    'self_serialized' => $selfSerialized,
+                    'peer_serialized' => $peerSerialized,
                     'params' => $params,
                     'data' => $data
                 ]

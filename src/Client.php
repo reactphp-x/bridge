@@ -112,8 +112,6 @@ final class Client extends AbstractClient
 
     public function onMessage(DuplexStreamInterface $stream, $msg)
     {
-        echo 'onMessage' . PHP_EOL;
-        echo $msg . PHP_EOL;
         if ($this->controlConnection === $stream) {
             if ($messages = $this->decodeEncode->decode($msg)) {
                 foreach ($messages as $message) {
@@ -284,7 +282,7 @@ final class Client extends AbstractClient
                                 'code' => $e->getCode(),
                                 'file' => $e->getFile(),
                                 'line' => $e->getLine(),
-                                'trace' => $e->getTrace(),
+                                'trace' => $e->getTraceAsString(),
                             ]
                         ]));
                         $stream->close();

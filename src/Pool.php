@@ -511,10 +511,14 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $uuid = Uuid::uuid4()->toString();
         $deferred = new Deferred;
         $this->uuidToDeferred[$uuid] = $deferred;
-        $connection->write($this->connections[$connection]['decodeEncode']->encode([
-            'cmd' => 'ping',
-            'uuid' => $uuid,
-        ]));
+        try {
+            $connection->write($this->connections[$connection]['decodeEncode']->encode([
+                'cmd' => 'ping',
+                'uuid' => $uuid,
+            ]));
+        } catch (\Throwable $th) {
+            $deferred->reject($th);
+        }
         $that = $this;
         return \React\Promise\Timer\timeout($deferred->promise(), 3)->then(function () use ($uuid, $connection, $that) {
             unset($this->uuidToDeferred[$uuid]);

@@ -110,16 +110,18 @@ final class Client extends AbstractClient
         });
     }
 
-    public function onMessage(DuplexStreamInterface $stream, $message)
+    public function onMessage(DuplexStreamInterface $stream, $msg)
     {
+        echo 'onMessage' . PHP_EOL;
+        echo $msg . PHP_EOL;
         if ($this->controlConnection === $stream) {
-            if ($messages = $this->decodeEncode->decode($message)) {
+            if ($messages = $this->decodeEncode->decode($msg)) {
                 foreach ($messages as $message) {
                     $this->handleControlData($stream, $message);
                 }
             }
         } elseif ($this->connections->contains($stream)) {
-            if ($messages = $this->connections[$stream]['decodeEncode']->decode($message)) {
+            if ($messages = $this->connections[$stream]['decodeEncode']->decode($msg)) {
                 foreach ($messages as $message) {
                     $this->handleTunnelData($stream, $message);
                 }

@@ -107,7 +107,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
                                 'code' => $e->getCode(),
                                 'file' => $e->getFile(),
                                 'line' => $e->getLine(),
-                                'trace' => $e->getTrace(),
+                                'trace' => $e->getTraceAsString(),
                             ]
                         ]));
                         $stream->close();

@@ -183,6 +183,7 @@ class Server implements ServerInterface
                 $stream->close();
             }
         } else {
+            echo "unknown tmp cmd $cmd\n";
             $stream->close();
         }
     }

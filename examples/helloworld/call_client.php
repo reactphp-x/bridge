@@ -2,7 +2,7 @@
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-$client = require __DIR__ . '/../../client.php';
+$client = require __DIR__ . '/../client.php';
 
 
 $stream = $client->call(function($stream){

@@ -365,6 +365,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $ping = null;
         $timer = Loop::addTimer($this->keep_alive, function () use ($connection, &$ping) {
             if ($this->idle_connections->count() > $this->min_connections) {
+                echo 'tunnel safe quit' . "\n";
                 $this->_quit($connection);
                 $this->idle_connections->detach($connection);
                 $this->current_connections--;

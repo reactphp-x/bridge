@@ -97,8 +97,9 @@ final class Client extends AbstractClient
             ]));
         }
 
-        $timer = Loop::addPeriodicTimer(30, function () use ($stream, $msg) {
-            $this->ping($stream)->then(function () {
+        $timer = Loop::addPeriodicTimer(5, function () use ($stream, $msg) {
+            $this->ping($stream)->then(function () use ($msg) {
+                echo $msg . ' ping success' . PHP_EOL;
             }, function ($e) use ($stream, $msg) {
                 echo $msg . ' ping error ' . $e->getMessage() . PHP_EOL;
                 $stream->close();

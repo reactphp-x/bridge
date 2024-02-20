@@ -417,10 +417,10 @@ final class Client extends AbstractClient
     {
 
         echo "call\n";
-        echo "params: \n";
+        echo "params: ";
         var_export($params);
         echo "\n";
-        echo "data: \n";
+        echo "data: ";
         var_export($data);
         echo "\n";
         $selfClosure = function($stream) {

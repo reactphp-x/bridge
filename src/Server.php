@@ -410,11 +410,17 @@ class Server implements ServerInterface
             foreach ($this->clients as $client) {
                 if ($this->tunnelConnections->contains($client)) {
                     // tunnel connection ping
-                    if (method_exists($this->call, '_ping')) {
-                        $this->call->_ping($client)->then(null, function ($e) {
-                            echo "tunnel ping fail\n";
-                            echo $e->getMessage() . "\n";
-                        });
+                    $info = $this->clients[$client];
+                    // 空闲去 ping
+                    if (time() - $info['active_time'] > $interval) {
+                        if (method_exists($this->call, '_ping')) {
+                            $this->call->_ping($client)->then(function(){
+                                echo "tunnel ping success\n";
+                            }, function ($e) {
+                                echo "tunnel ping fail\n";
+                                echo $e->getMessage() . "\n";
+                            });
+                        }
                     }
                 } else {
                     $info = $this->clients[$client];

@@ -19,9 +19,10 @@ $server = new Server(new VerifyUuid([
     '41c5ee60-0628-4b11-9439-a10ba19cbcdd' => '10.10.10.3'
 ]));
 
-$server->enableKeepAlive(10);
+$server->enableKeepAlive(5);
 
 $pool = new Pool($server, [
+    'min_connections' => 1,
     'max_connections' => 20,
     'connection_timeout' => 2,
     'uuid_max_tunnel' => 1,

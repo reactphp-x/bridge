@@ -102,7 +102,7 @@ final class Client extends AbstractClient
         $timer = Loop::addPeriodicTimer(30, function () use ($stream, $msg) {
             $info = $this->clients[$stream];
             // 空闲去 ping
-            if (time() - $info['active_time'] > 30) {
+            if ((time() - $info['active_time']) > 30) {
                 $this->ping($stream)->then(function () use ($msg) {
                     echo $msg . ' ping success' . PHP_EOL;
                 }, function ($e) use ($stream, $msg) {

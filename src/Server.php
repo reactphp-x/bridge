@@ -412,7 +412,7 @@ class Server implements ServerInterface
                     // tunnel connection ping
                     $info = $this->clients[$client];
                     // 空闲去 ping
-                    if (time() - $info['active_time'] > $interval) {
+                    if ((time() - $info['active_time']) > $interval) {
                         if (method_exists($this->call, '_ping')) {
                             $this->call->_ping($client)->then(function(){
                                 echo "tunnel ping success\n";
@@ -424,7 +424,7 @@ class Server implements ServerInterface
                     }
                 } else {
                     $info = $this->clients[$client];
-                    if (time() - $info['active_time'] > $interval) {
+                    if ((time() - $info['active_time']) > $interval) {
                         $this->ping($client, $info['decodeEncode'])->then(null, function ($e) use ($client) {
                             echo "client ping fail\n";
                             echo $e->getMessage() . "\n";

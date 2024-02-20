@@ -31,6 +31,7 @@ final class Client extends AbstractClient
      */
     protected $controlConnection;
     protected SplObjectStorage $connections;
+    protected SplObjectStorage $clients;
 
     private $uuidToDeferred = [];
 
@@ -44,6 +45,7 @@ final class Client extends AbstractClient
     {
         parent::__construct($uuid);
         $this->connections = new SplObjectStorage;
+        $this->clients = new SplObjectStorage;
         if (strpos($uri, '://') === false) {
             $uri = 'tcp://' . $uri;
         }
@@ -98,21 +100,34 @@ final class Client extends AbstractClient
         }
 
         $timer = Loop::addPeriodicTimer(30, function () use ($stream, $msg) {
-            $this->ping($stream)->then(function () use ($msg) {
-                echo $msg . ' ping success' . PHP_EOL;
-            }, function ($e) use ($stream, $msg) {
-                echo $msg . ' ping error ' . $e->getMessage() . PHP_EOL;
-                $stream->close();
-            });
+            $info = $this->clients[$stream];
+            // 空闲去 ping
+            if (time() - $info['active_time'] > 30) {
+                $this->ping($stream)->then(function () use ($msg) {
+                    echo $msg . ' ping success' . PHP_EOL;
+                }, function ($e) use ($stream, $msg) {
+                    echo $msg . ' ping error ' . $e->getMessage() . PHP_EOL;
+                    $stream->close();
+                });
+            }
+           
         });
 
         $stream->on('close', function () use ($timer) {
             Loop::cancelTimer($timer);
         });
+        $this->clients->attach($stream, new Info($info + [
+            'decodeEncode' => new $this->decodeEncodeClass,
+            'active_time' => time(),
+        ]));
     }
 
     public function onMessage(DuplexStreamInterface $stream, $msg)
     {
+        if ($this->clients->contains($stream)) {
+            $this->clients[$stream]['active_time'] = time();
+        }
+
         if ($this->controlConnection === $stream) {
             if ($messages = $this->decodeEncode->decode($msg)) {
                 foreach ($messages as $message) {
@@ -153,6 +168,11 @@ final class Client extends AbstractClient
             echo 'tunnelConnection closed' . PHP_EOL;
             $this->connections->detach($stream);
         }
+
+        if ($this->clients->contains($stream)) {
+            $this->clients->detach($stream);
+        }
+
     }
 
     protected function ping($conn)

@@ -416,6 +416,12 @@ final class Client extends AbstractClient
     public function call($closure, $params = null, $data = [])
     {
 
+        echo "call\n";
+        echo "params: \n";
+        var_export($params);
+        echo "\n";
+        echo "data: \n";
+        var_export($data);
         $selfClosure = function($stream) {
             return $stream;
         };

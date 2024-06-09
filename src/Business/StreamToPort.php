@@ -73,14 +73,26 @@ final class StreamToPort
         $inMapBuffer = $this->inMapBuffer;
         $toAddress = $this->toAddress;
         $outMapBuffer = $this->outMapBuffer;
-        StreamToStream::create()->from($this->fromStream)->to($toStream = $this->call->call(SerializableClosure::serialize(function ($stream) use ($inMapBuffer, $outMapBuffer, $toAddress) {
-            StreamToStream::create()->from($stream, $inMapBuffer)->to(Factory::createConnector($toAddress)->connect($toAddress)->then(null, function ($error) use ($stream) {
+
+        $dotLength = explode('.', $this->toUuid);
+        // ip
+        if (count($dotLength) == 4) {
+            $data = [
+                'something' => $this->toUuid
+            ];
+        } else {
+            $data = [
+                'uuid' => $this->toUuid
+            ];
+        }
+       
+
+        StreamToStream::create()->from($this->fromStream, $inMapBuffer)->to($toStream = $this->call->call(SerializableClosure::serialize(function ($stream) use ($toAddress) {
+            StreamToStream::create()->from($stream)->to(Factory::createConnector($toAddress)->connect($toAddress)->then(null, function ($error) use ($stream) {
                 $stream->emit('error', [$error]);
-            }), $outMapBuffer);
+            }));
             return $stream;
-        }, $this->toSecretKey), [
-            'uuid' => $this->toUuid
-        ]));
+        }, $this->toSecretKey), $data), $outMapBuffer);
         $this->status = 2;
         $toStream->on('error', function ($e) {
             $this->errorMsg = $e->getMessage();

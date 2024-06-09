@@ -102,6 +102,7 @@ final class StreamToStream
         ]);
 
         $stream->on('error', function ($e) {
+            var_dump($e->getMessage());
             $this->errorMsg = $e->getMessage();
             $this->status = 3;
         });

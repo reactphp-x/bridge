@@ -19,6 +19,8 @@ class Factory
 
         if ($protocol == 'tcp') {
             return new TcpConnectorStream($connector);
+        } else if ($protocol == 'unix') {
+            return new UnixConnectorStream($connector);
         }
 
         return new TcpConnectorStream($connector);

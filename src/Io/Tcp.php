@@ -10,6 +10,7 @@ class Tcp
 {
 
     protected $server;
+    protected $socket;
 
     public function __construct($uri, MessageComponentInterface $server, $context = [])
     {
@@ -30,6 +31,7 @@ class Tcp
                 $this->handleError($conn, $e);
             });
         });
+        $this->socket = $socket;
     }
 
     protected function handleData($conn, $data)
@@ -53,5 +55,10 @@ class Tcp
     protected function handleError($conn, $e)
     {
         $this->server->onError($conn, $e);
+    }
+
+    public function close()
+    {
+        $this->socket->close();
     }
 }

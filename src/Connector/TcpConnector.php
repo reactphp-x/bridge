@@ -62,7 +62,11 @@ class TcpConnector implements ConnectorInterface
 
     private function getQuery($uri)
     {
-        $query = parse_url($uri, PHP_URL_QUERY);
+        $query = '';
+        if (\strpos($uri, '?') !== false) {
+            $query = (string)\substr($uri, \strpos($uri, '?') + 1);
+        }
+
         $array =array_filter(explode('&', $query ?: ''));
         $result = [];
         foreach ($array as $item) {
@@ -74,8 +78,9 @@ class TcpConnector implements ConnectorInterface
 
     private function removeQuery($uri)
     {
-        $query = parse_url($uri, PHP_URL_QUERY);
-        $uri = str_replace('?' . $query, '', $uri);
+        if (\strpos($uri, '?') !== false) {
+            $uri = (string)\substr($uri, 0,\strpos($uri, '?'));
+        }
         return $uri;
     }
 }

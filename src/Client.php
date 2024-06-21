@@ -55,14 +55,15 @@ final class Client extends AbstractClient
 
     private function createConnector($uri)
     {
-        $scheme = parse_url($uri, PHP_URL_SCHEME);
-        $host = parse_url($uri, PHP_URL_HOST);
-        $port = parse_url($uri, PHP_URL_PORT);
+        $scheme = 'tcp';
+        if (\strpos($uri, '://') !== false) {
+            $scheme = (string)\substr($uri, 0, \strpos($uri, '://'));
+        }
 
         if ($scheme == 'ws' || $scheme == 'wss') {
             $this->setConnector(new WebsocketConnector($this));
             $this->setDecodeEncode(new WebsocketDecodeEncode);
-        } else if ($scheme == 'tcp' || $scheme == 'tls') {
+        } else if ($scheme == 'tcp' || $scheme == 'tls' || $scheme == 'unix') {
             $this->setConnector(new TcpConnector($this));
             $this->setDecodeEncode(new TcpDecodeEncode);
         } else {

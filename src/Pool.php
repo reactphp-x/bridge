@@ -225,7 +225,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
 
             if (isset($this->uuidIsConnecting[$uuid])) {
                 $deferred = new Deferred;
-                $this->uuidToDeferred[$uuid][] = $deferred;
+                $this->uuidToDeferreds[$uuid][] = $deferred;
                 return $deferred->promise();
             }
             $this->uuidIsConnecting[$uuid] = true;
@@ -300,11 +300,12 @@ class Pool extends AbstractConnectionPool implements CallInterface
             unset($this->uuidIsConnecting[$uuid]);
             $deferreds = $this->uuidToDeferreds[$uuid] ?? [];
             unset($this->uuidToDeferreds[$uuid]);
+
+            $this->addConnection($connection, $decodeEncode);
+
             foreach ($deferreds as $deferred) {
                 $deferred->resolve($connection);
             }
-
-            $this->addConnection($connection, $decodeEncode);
             return $connection;
         }, function ($e) use ($uuid) {
 
@@ -406,7 +407,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
 
             $uuid = $params['uuid'];
             if (isset($this->uuidIsConnecting[$uuid])) {
-                $this->uuidToDeferred[$uuid][] = $deferred;
+                $this->uuidToDeferreds[$uuid][] = $deferred;
             } else {
                 $this->uuidIsConnecting[$uuid] = true;
                 $this->current_connections++;

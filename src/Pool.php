@@ -1,13 +1,13 @@
 <?php
 
-namespace Reactphp\Framework\Bridge;
+namespace ReactphpX\Bridge;
 
 use Evenement\EventEmitterInterface;
 use Evenement\EventEmitterTrait;
-use Reactphp\Framework\Pool\AbstractConnectionPool;
-use Reactphp\Framework\Bridge\Interface\CallInterface;
-use Reactphp\Framework\Bridge\Interface\CreateConnectionInterface;
-use Reactphp\Framework\Bridge\Info;
+use ReactphpX\Pool\AbstractConnectionPool;
+use ReactphpX\Bridge\Interface\CallInterface;
+use ReactphpX\Bridge\Interface\CreateConnectionInterface;
+use ReactphpX\Bridge\Info;
 use React\EventLoop\LoopInterface;
 use React\EventLoop\Loop;
 use React\Promise\Deferred;
@@ -18,7 +18,7 @@ use React\Stream;
 use React\Promise\Timer\TimeoutException;
 use function React\Promise\reject;
 use function React\Promise\resolve;
-use Reactphp\Framework\Pool\Exception;
+use ReactphpX\Pool\Exception;
 
 class Pool extends AbstractConnectionPool implements CallInterface
 {

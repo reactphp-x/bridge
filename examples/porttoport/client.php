@@ -1,6 +1,6 @@
 <?php
 
-use Reactphp\Framework\Bridge\Business\PortToPort;
+use ReactphpX\Bridge\Business\PortToPort;
 
 $client = require __DIR__ . '/../client.php';
 

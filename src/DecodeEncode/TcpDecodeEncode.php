@@ -1,10 +1,10 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\DecodeEncode;
+namespace ReactphpX\Bridge\DecodeEncode;
 
 use MessagePack\MessagePack;
 use MessagePack\BufferUnpacker;
-use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
+use ReactphpX\Bridge\Interface\DecodeEncodeInterface;
 
 class TcpDecodeEncode implements DecodeEncodeInterface
 {

@@ -1,11 +1,11 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\DecodeEncode;
+namespace ReactphpX\Bridge\DecodeEncode;
 
 use Ratchet\RFC6455\Messaging\Frame;
 use MessagePack\MessagePack;
 use MessagePack\BufferUnpacker;
-use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
+use ReactphpX\Bridge\Interface\DecodeEncodeInterface;
 
 class WebsocketDecodeEncode implements DecodeEncodeInterface
 {

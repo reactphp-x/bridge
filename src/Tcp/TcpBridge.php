@@ -1,9 +1,9 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Tcp;
+namespace ReactphpX\Bridge\Tcp;
 
 use React\Stream\DuplexStreamInterface;
-use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
+use ReactphpX\Bridge\Interface\MessageComponentInterface;
 
 class TcpBridge implements TcpBridgeInterface
 {

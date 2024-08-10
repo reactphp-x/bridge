@@ -1,10 +1,10 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Business;
+namespace ReactphpX\Bridge\Business;
 
-use Reactphp\Framework\Bridge\Interface\CallInterface;
+use ReactphpX\Bridge\Interface\CallInterface;
 use function React\Async\async;
-use Reactphp\Framework\Bridge\Business\ServerStream\Factory as ServerStreamFactory;
+use ReactphpX\Bridge\Business\ServerStream\Factory as ServerStreamFactory;
 
 // one stream from uuid address port to another uuid address port
 

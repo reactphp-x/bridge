@@ -1,8 +1,8 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Tcp;
+namespace ReactphpX\Bridge\Tcp;
 
-use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
+use ReactphpX\Bridge\Interface\MessageComponentInterface;
 
 interface TcpBridgeInterface extends MessageComponentInterface
 {

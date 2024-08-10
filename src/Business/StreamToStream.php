@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Business;
+namespace ReactphpX\Bridge\Business;
 
 use React\Stream\DuplexStreamInterface;
 use React\Promise\PromiseInterface;

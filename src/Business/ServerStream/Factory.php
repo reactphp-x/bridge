@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Business\ServerStream;
+namespace ReactphpX\Bridge\Business\ServerStream;
 
 use React\EventLoop\LoopInterface;
 

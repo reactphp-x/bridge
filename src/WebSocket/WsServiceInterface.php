@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\WebSocket;
+namespace ReactphpX\Bridge\WebSocket;
 
 /**
  * WebSocket Server Interface

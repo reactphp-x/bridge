@@ -1,9 +1,9 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Io;
+namespace ReactphpX\Bridge\Io;
 
-// use Reactphp\Framework\Bridge\Interface\ServerInterface;
-use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
+// use ReactphpX\Bridge\Interface\ServerInterface;
+use ReactphpX\Bridge\Interface\MessageComponentInterface;
 use React\Socket\SocketServer;
 
 class Tcp

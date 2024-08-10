@@ -1,10 +1,10 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\WebSocket;
+namespace ReactphpX\Bridge\WebSocket;
 
-use Reactphp\Framework\Bridge\Http\HttpBridgeInterface;
-use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
-use Reactphp\Framework\Bridge\Info;
+use ReactphpX\Bridge\Http\HttpBridgeInterface;
+use ReactphpX\Bridge\Interface\MessageComponentInterface;
+use ReactphpX\Bridge\Info;
 use React\Stream\DuplexStreamInterface;
 use Ratchet\RFC6455\Messaging\MessageInterface;
 use Ratchet\RFC6455\Messaging\FrameInterface;
@@ -84,7 +84,7 @@ class WsBridge implements HttpBridgeInterface
             throw new \UnexpectedValueException('$request can not be null');
         }
 
-        $response = $this->handshakeNegotiator->handshake($request)->withHeader('X-Powered-By', 'Reactphp-Framework/Bridge/alpha');
+        $response = $this->handshakeNegotiator->handshake($request)->withHeader('X-Powered-By', 'reactphp-x/Bridge/alpha');
 
         $stream->write(Message::toString($response));
         if (101 !== $response->getStatusCode()) {

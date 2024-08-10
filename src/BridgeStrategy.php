@@ -1,14 +1,14 @@
 <?php
 
-namespace Reactphp\Framework\Bridge;
+namespace ReactphpX\Bridge;
 
-use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
-use Reactphp\Framework\Bridge\Tcp\TcpBridgeInterface;
-use Reactphp\Framework\Bridge\Http\HttpBridgeInterface;
-use Reactphp\Framework\Bridge\DecodeEncode\TcpDecodeEncode;
-use Reactphp\Framework\Bridge\DecodeEncode\WebsocketDecodeEncode;
+use ReactphpX\Bridge\Interface\MessageComponentInterface;
+use ReactphpX\Bridge\Tcp\TcpBridgeInterface;
+use ReactphpX\Bridge\Http\HttpBridgeInterface;
+use ReactphpX\Bridge\DecodeEncode\TcpDecodeEncode;
+use ReactphpX\Bridge\DecodeEncode\WebsocketDecodeEncode;
 use React\Stream\DuplexStreamInterface;
-use Reactphp\Framework\Bridge\Info;
+use ReactphpX\Bridge\Info;
 
 class BridgeStrategy implements MessageComponentInterface
 {

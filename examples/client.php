@@ -2,7 +2,7 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Reactphp\Framework\Bridge\Client;
+use ReactphpX\Bridge\Client;
 
 // Client::$debug = true;
 // Client::$secretKey = '123456';

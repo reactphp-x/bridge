@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge;
+namespace ReactphpX\Bridge;
 
 use Evenement\EventEmitterTrait;
 use React\Promise\Deferred;
@@ -8,10 +8,10 @@ use function React\Async\async;
 use React\Promise\Timer\TimeoutException;
 use Ramsey\Uuid\Uuid;
 use React\Stream\DuplexStreamInterface;
-use Reactphp\Framework\Bridge\Interface\ServerInterface;
-use Reactphp\Framework\Bridge\Interface\CallInterface;
-use Reactphp\Framework\Bridge\Info;
-use Reactphp\Framework\Bridge\Interface\VerifyInterface;
+use ReactphpX\Bridge\Interface\ServerInterface;
+use ReactphpX\Bridge\Interface\CallInterface;
+use ReactphpX\Bridge\Info;
+use ReactphpX\Bridge\Interface\VerifyInterface;
 use React\EventLoop\Loop;
 
 class Server implements ServerInterface

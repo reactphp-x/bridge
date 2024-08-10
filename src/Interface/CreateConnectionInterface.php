@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Interface;
+namespace ReactphpX\Bridge\Interface;
 
 interface CreateConnectionInterface
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge;
+namespace ReactphpX\Bridge;
 
 use Laravel\SerializableClosure\SerializableClosure as LaravelSerializableClosure;
 

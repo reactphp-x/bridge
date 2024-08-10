@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge;
+namespace ReactphpX\Bridge;
 
 class Info implements \ArrayAccess
 {

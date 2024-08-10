@@ -1,8 +1,8 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Verify;
+namespace ReactphpX\Bridge\Verify;
 
-use Reactphp\Framework\Bridge\Interface\VerifyInterface;
+use ReactphpX\Bridge\Interface\VerifyInterface;
 
 class VerifyUuid implements VerifyInterface
 {

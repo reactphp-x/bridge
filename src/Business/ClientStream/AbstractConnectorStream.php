@@ -1,6 +1,6 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Business\ClientStream;
+namespace ReactphpX\Bridge\Business\ClientStream;
 
 abstract class AbstractConnectorStream implements ConnectorStreamInterface
 {   

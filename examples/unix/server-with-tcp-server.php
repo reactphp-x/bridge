@@ -2,14 +2,14 @@
 
 require __DIR__ . '/../../vendor/autoload.php';
 
-use Reactphp\Framework\Bridge\Server;
-use Reactphp\Framework\Bridge\Pool;
-use Reactphp\Framework\Bridge\Verify\VerifyUuid;
-use Reactphp\Framework\Bridge\Http\HttpBridge;
-use Reactphp\Framework\Bridge\WebSocket\WsBridge;
-use Reactphp\Framework\Bridge\Tcp\TcpBridge;
-use Reactphp\Framework\Bridge\BridgeStrategy;
-use Reactphp\Framework\Bridge\Io\Tcp;
+use ReactphpX\Bridge\Server;
+use ReactphpX\Bridge\Pool;
+use ReactphpX\Bridge\Verify\VerifyUuid;
+use ReactphpX\Bridge\Http\HttpBridge;
+use ReactphpX\Bridge\WebSocket\WsBridge;
+use ReactphpX\Bridge\Tcp\TcpBridge;
+use ReactphpX\Bridge\BridgeStrategy;
+use ReactphpX\Bridge\Io\Tcp;
 
 // Server::$debug = true;
 
@@ -37,7 +37,7 @@ new Tcp('0.0.0.0:' . ($argv[1] ?? '8010'), new BridgeStrategy([
 
 
 
-use Reactphp\Framework\Bridge\Business\StreamToPort;
+use ReactphpX\Bridge\Business\StreamToPort;
 
 
 $socket = new React\Socket\SocketServer('0.0.0.0:8090');

@@ -4,7 +4,7 @@
 use React\Promise\Deferred;
 
 $client = require __DIR__ . '/../client.php';
-// \Reactphp\Framework\Bridge\Client::$secretKey = '';
+// \ReactphpX\Bridge\Client::$secretKey = '';
 $deferred = new Deferred();
 
 $self = [];

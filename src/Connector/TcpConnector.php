@@ -1,10 +1,10 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Connector;
+namespace ReactphpX\Bridge\Connector;
 
 use React\Socket\ConnectorInterface;
 use React\Stream;
-use Reactphp\Framework\Bridge\Interface\ClientInterface;
+use ReactphpX\Bridge\Interface\ClientInterface;
 use React\Socket\Connector;
 
 class TcpConnector implements ConnectorInterface

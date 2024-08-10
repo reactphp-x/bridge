@@ -1,11 +1,11 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Connector;
+namespace ReactphpX\Bridge\Connector;
 
 use React\Socket\ConnectorInterface;
 use function Ratchet\Client\connect;
 use React\Stream;
-use Reactphp\Framework\Bridge\Interface\ClientInterface;
+use ReactphpX\Bridge\Interface\ClientInterface;
 use React\EventLoop\Loop;
 
 class WebsocketConnector implements ConnectorInterface

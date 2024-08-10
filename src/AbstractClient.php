@@ -1,10 +1,10 @@
 <?php
 
-namespace Reactphp\Framework\Bridge;
+namespace ReactphpX\Bridge;
 
 use React\Socket\ConnectorInterface;
-use Reactphp\Framework\Bridge\Interface\ClientInterface;
-use Reactphp\Framework\Bridge\Interface\DecodeEncodeInterface;
+use ReactphpX\Bridge\Interface\ClientInterface;
+use ReactphpX\Bridge\Interface\DecodeEncodeInterface;
 
 abstract class AbstractClient implements ClientInterface
 {

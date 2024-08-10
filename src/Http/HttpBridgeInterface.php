@@ -1,8 +1,8 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Http;
+namespace ReactphpX\Bridge\Http;
 
-use Reactphp\Framework\Bridge\Interface\MessageComponentInterface;
+use ReactphpX\Bridge\Interface\MessageComponentInterface;
 
 interface HttpBridgeInterface extends MessageComponentInterface
 {

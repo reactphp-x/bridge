@@ -1,9 +1,9 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Http;
+namespace ReactphpX\Bridge\Http;
 
 use React\Stream\DuplexStreamInterface;
-use Reactphp\Framework\Bridge\Info;
+use ReactphpX\Bridge\Info;
 use GuzzleHttp\Psr7\Message;
 
 class HttpBridge implements HttpBridgeInterface

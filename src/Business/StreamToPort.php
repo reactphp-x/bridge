@@ -1,10 +1,10 @@
 <?php
 
-namespace Reactphp\Framework\Bridge\Business;
+namespace ReactphpX\Bridge\Business;
 
-use Reactphp\Framework\Bridge\Interface\CallInterface;
-use Reactphp\Framework\Bridge\Business\ClientStream\Factory;
-use Reactphp\Framework\Bridge\SerializableClosure;
+use ReactphpX\Bridge\Interface\CallInterface;
+use ReactphpX\Bridge\Business\ClientStream\Factory;
+use ReactphpX\Bridge\SerializableClosure;
 
 final class StreamToPort
 {

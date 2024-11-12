@@ -10,12 +10,14 @@ use React\Promise\Deferred;
 use Ramsey\Uuid\Uuid;
 use React\Promise\Timer\TimeoutException;
 use function React\Async\await;
+use function React\Async\async;
 use React\EventLoop\Loop;
 use ReactphpX\Bridge\Info;
 use ReactphpX\Bridge\DecodeEncode\WebsocketDecodeEncode;
 use ReactphpX\Bridge\DecodeEncode\TcpDecodeEncode;
 use ReactphpX\Bridge\Connector\WebsocketConnector;
 use ReactphpX\Bridge\Connector\TcpConnector;
+use ReactphpX\Bridge\P2p\P2pBridge;
 
 final class Client extends AbstractClient
 {
@@ -30,6 +32,8 @@ final class Client extends AbstractClient
      * @var DuplexStreamInterface
      */
     protected $controlConnection;
+    public $p2pBridge;
+    protected $controlInfo;
     protected SplObjectStorage $connections;
     protected SplObjectStorage $clients;
 
@@ -67,30 +71,19 @@ final class Client extends AbstractClient
             $this->setConnector(new TcpConnector($this));
             $this->setDecodeEncode(new TcpDecodeEncode);
         } else {
-            throw new \InvalidArgumentException('unsupported scheme ' . $scheme. ' for uri ' . $uri);
+            throw new \InvalidArgumentException('unsupported scheme ' . $scheme . ' for uri ' . $uri);
         }
     }
 
 
     public function onOpen(DuplexStreamInterface $stream, $info = null)
     {
+
+        $type = $info['type'] ?? '';
         $msg = 'control';
-        if (!$this->controlConnection) {
-            echo 'controlConnection' . PHP_EOL;
-            $this->controlConnection = $stream;
-            $this->controlConnection->write($this->decodeEncode->encode([
-                'cmd' => 'registerController',
-                'uuid' => $this->uuid,
-            ]));
-            $this->emit('controlConnection', [$this->controlConnection]);
-        } else {
-            $msg = 'tunnel';
-            echo 'tunnelConnection' . PHP_EOL;
-            $stream->write($this->decodeEncode->encode([
-                'cmd' => 'registerTunnel',
-                'control_uuid' => $this->uuid,
-                'uuid' => $info['uuid'],
-            ]));
+
+        if ($type == 'p2p') {
+            $msg = 'p2p';
             $this->connections->attach($stream, new Info([
                 'local_address' => $info['local_address'],
                 'remote_address' => '',
@@ -98,12 +91,47 @@ final class Client extends AbstractClient
                 'streams' => new SplObjectStorage,
                 'uuidToStream' => new Info([])
             ]));
+        } else {
+            if (!$this->controlConnection) {
+                echo 'controlConnection' . PHP_EOL;
+                $this->controlConnection = $stream;
+                $this->controlInfo = new Info([
+                    'local_address' => $info['local_address'],
+                    'remote_address' => '',
+                ]);
+                $this->controlConnection->write($this->decodeEncode->encode([
+                    'cmd' => 'registerController',
+                    'uuid' => $this->uuid,
+                ]));
+                $this->emit('controlConnection', [$this->controlConnection]);
+            } else {
+                $msg = 'tunnel';
+                echo 'tunnelConnection' . PHP_EOL;
+                $stream->write($this->decodeEncode->encode([
+                    'cmd' => 'registerTunnel',
+                    'control_uuid' => $this->uuid,
+                    'uuid' => $info['uuid'],
+                ]));
+                $this->connections->attach($stream, new Info([
+                    'local_address' => $info['local_address'],
+                    'remote_address' => '',
+                    'decodeEncode' => new $this->decodeEncodeClass,
+                    'streams' => new SplObjectStorage,
+                    'uuidToStream' => new Info([])
+                ]));
+            }
         }
 
-        $timer = Loop::addPeriodicTimer(30, function () use ($stream, $msg) {
+        $time = 30;
+
+        if ($type == 'p2p') {
+            $time = 5;
+        }
+
+        $timer = Loop::addPeriodicTimer($time, function () use ($stream, $msg, $time) {
             $info = $this->clients[$stream];
             // 空闲去 ping
-            if ((time() - $info['active_time']) > 30) {
+            if ((time() - $info['active_time']) > $time) {
                 $this->ping($stream)->then(function () use ($msg) {
                     echo $msg . ' ping success' . PHP_EOL;
                 }, function ($e) use ($stream, $msg) {
@@ -111,7 +139,6 @@ final class Client extends AbstractClient
                     $stream->close();
                 });
             }
-           
         });
 
         $stream->on('close', function () use ($timer) {
@@ -150,6 +177,7 @@ final class Client extends AbstractClient
     {
         if ($this->controlConnection === $stream) {
             $this->controlConnection = null;
+            $this->controlInfo = null;
             echo "controlConnection close retry after 3 second\n";
             if ($this->status != 2) {
                 $this->status = 0;
@@ -173,7 +201,6 @@ final class Client extends AbstractClient
         if ($this->clients->contains($stream)) {
             $this->clients->detach($stream);
         }
-
     }
 
     protected function ping($conn)
@@ -228,7 +255,17 @@ final class Client extends AbstractClient
         $cmd = $message['cmd'] ?? '';
         $uuid = $message['uuid'] ?? '';
         if ($cmd == 'init') {
+            $this->controlInfo->remote_address = $message['data']['remote_address'] ?? '';
+
+            if ($this->p2pBridge) {
+                $this->p2pBridge->createUdpServer($this->controlInfo->local_address, str_replace('tcp://', '', $this->controlInfo->remote_address));
+            } else {
+                $this->p2pBridge = new P2pBridge($this, $this);
+                $this->p2pBridge->createUdpServer($this->controlInfo->local_address, str_replace('tcp://', '', $this->controlInfo->remote_address));
+            }
+
             $this->emit('success', [$message['data'] ?? []]);
+
         } else if ($cmd == 'controllerConnected') {
             $this->emit('controllerConnected', [$message['data'] ?? [], $stream]);
         } else if ($cmd == 'createTunnelConnection') {
@@ -263,9 +300,12 @@ final class Client extends AbstractClient
         $decodeEncode = $this->connections[$conn]['decodeEncode'];
         $uuid = $message['uuid'];
         $cmd = $message['cmd'];
+
+        echo "CMD: $cmd\n";
+
         if ($cmd == 'init') {
             $this->connections[$conn]['remote_address'] = $message['data']['remote_address'] ?? '';
-        } else if ($cmd == 'callback') {
+        } else if ($cmd == 'callback' || $cmd == 'callback_p2p') {
             $read = new Stream\ThroughStream;
             $write = new Stream\ThroughStream;
             $stream = new Stream\CompositeStream($read, $write);
@@ -329,12 +369,24 @@ final class Client extends AbstractClient
 
             try {
                 $event = $message['data']['event'] ?? '';
-                if ($event) {
-                    $this->emit($event, [$stream]);
+                if ($cmd == 'callback_p2p') {
+                    $conn->write($decodeEncode->encode([
+                        'cmd' => 'callback',
+                        'uuid' => $uuid,
+                        'data' => [
+                            'serialized' => $message['data']['self_serialized'],
+                            'event' => $event,
+                        ]
+                    ]));
+                } else {
+                    if ($event) {
+                        $this->emit($event, [$stream]);
+                    }
                 }
+
                 $serialized = $message['data']['serialized'];
                 $closure = SerializableClosure::unserialize($serialized, static::$secretKey);
-                $r = $closure($stream, $this->connections[$conn]);
+                $r = $closure($stream, $this->connections[$conn], $this);
                 if ($r instanceof \React\Promise\PromiseInterface) {
                     $r->then(function ($value) use ($stream) {
                         $stream->end($value);
@@ -424,7 +476,7 @@ final class Client extends AbstractClient
         echo "data: ";
         var_export($data);
         echo "\n";
-        $selfClosure = function($stream) {
+        $selfClosure = function ($stream) {
             return $stream;
         };
         $selfSerialized = SerializableClosure::serialize($selfClosure->bindTo(null, null), static::$secretKey);
@@ -434,37 +486,95 @@ final class Client extends AbstractClient
         $deferred = new Deferred;
         $uuid = Uuid::uuid4()->toString();
         $this->uuidToDeferred[$uuid] = $deferred;
-        $fn = function ($controlConnection) use ($selfSerialized, $peerSerialized, $params, $uuid, $data) {
-            $controlConnection->write($this->decodeEncode->encode([
-                'cmd' => 'callback_peer_stream',
-                'uuid' => $this->uuid,
-                'data' => [
-                    'event' => $uuid . '_' . 'callback_peer_stream',
-                    'self_serialized' => $selfSerialized,
-                    'peer_serialized' => $peerSerialized,
-                    'params' => $params,
-                    'data' => $data
-                ]
-            ]));
-        };
 
-        if (!$this->controlConnection) {
-            $this->once('controlConnection', $fn);
-        } else {
-            $fn($this->controlConnection);
-        }
+        $serverRequest = $data['server_request'] ?? false;
+
         $this->once($uuid . '_callback_peer_stream', $fn1 = function ($stream) use ($deferred) {
             $deferred->resolve($stream);
         });
+
+        $fn = null;
+        $fn1 = null;
+        $serverRequestFn = function () use ($selfSerialized, $peerSerialized, $params, $uuid, $data, $deferred, &$fn, &$fn1) {
+            $fn = function ($controlConnection) use ($selfSerialized, $peerSerialized, $params, $uuid, $data) {
+                $controlConnection->write($this->decodeEncode->encode([
+                    'cmd' => 'callback_peer_stream',
+                    'uuid' => $this->uuid,
+                    'data' => [
+                        'event' => $uuid . '_' . 'callback_peer_stream',
+                        'self_serialized' => $selfSerialized,
+                        'peer_serialized' => $peerSerialized,
+                        'params' => $params,
+                        'data' => $data
+                    ]
+                ]));
+            };
+    
+            if (!$this->controlConnection) {
+                $this->once('controlConnection', $fn);
+            } else {
+                $fn($this->controlConnection);
+            }
+
+        };
+
+        $p2pRequestFn = async(function () use ($selfSerialized, $peerSerialized, $params, $uuid, $data, $deferred, $serverRequestFn, &$fn1) {
+            $this->p2pBridge->peer($params)->then(function ($peer) use ($selfSerialized, $peerSerialized, $uuid, $data, $deferred, $serverRequestFn, &$fn, &$fn1) {
+                // 说明打洞成功了
+                echo 'p2p tunnel success' . PHP_EOL;
+                if ($this->connections->contains($peer)) {
+                    $peer->write($this->decodeEncode->encode([
+                        'cmd' => 'callback_p2p',
+                        'uuid' => $uuid,
+                        'data' => [
+                            'event' => $uuid . '_' . 'callback_peer_stream',
+                            'self_serialized' => $selfSerialized,
+                            'serialized' => $peerSerialized,
+                        ]
+                    ]));
+                } else {
+                    $serverRequestFn();
+                }
+            }, function ($e) use ($deferred, $serverRequestFn) {
+                echo 'p2p fail' .$e->getMessage() . PHP_EOL;
+
+                $serverRequestFn();
+            });
+
+            
+        });
+
+
+        if ($serverRequest === true) {
+            echo "serverRequestFn\n";
+            $serverRequestFn();
+        } else {
+            echo "p2pRequestFn\n";
+            // p2p request
+            if (!$this->controlConnection) {
+                $this->once('success', function () use ($p2pRequestFn) {
+                    $p2pRequestFn();
+                });
+            } else {
+                $p2pRequestFn();
+            }
+        }
+
+
+       
         try {
             $stream = await(\React\Promise\Timer\timeout($deferred->promise(), 3)->then(function ($stream) use ($uuid) {
                 unset($this->uuidToDeferred[$uuid]);
                 return $stream;
-            }, function ($e) use ($uuid, $fn, $fn1) {
+            }, function ($e) use ($uuid, &$fn, &$fn1) {
+
                 if ($fn) {
                     $this->removeListener('controlConnection', $fn);
                 }
-                $this->removeListener($uuid . '_callback_peer_stream', $fn1);
+
+                if ($fn1) {
+                    $this->removeListener($uuid . '_callback_peer_stream', $fn1);
+                }
 
                 unset($this->uuidToDeferred[$uuid]);
                 if ($e instanceof TimeoutException) {

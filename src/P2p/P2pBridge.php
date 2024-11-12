@@ -1,0 +1,234 @@
+<?php
+
+namespace ReactphpX\Bridge\P2p;
+
+use React\Stream\DuplexStreamInterface;
+use ReactphpX\Bridge\Interface\MessageComponentInterface;
+use React\Stream\CompositeStream;
+use React\Stream\ThroughStream;
+use React\EventLoop\Loop;
+
+class P2pBridge implements P2pBridgeInterface
+{
+
+    protected $component;
+    protected $client;
+    protected $socket;
+    public $localAddress;
+    public $remoteAddress;
+
+
+    protected $addressToStream = [];
+
+    protected $uuidOrIpToAddress = [];
+    protected $addressDeferred = [];
+    protected $addressTimer = [];
+
+    public function __construct(MessageComponentInterface $component, $client)
+    {
+        $this->component = $component;
+        $this->client = $client;
+    }
+
+    public function onOpen(DuplexStreamInterface $stream, $info = null)
+    {
+        $this->component->onOpen($stream, $info);
+    }
+
+    public function onClose(DuplexStreamInterface $stream, $reason = null)
+    {
+        $this->component->onClose($stream, $reason);
+    }
+
+    public function onError(DuplexStreamInterface $conn, \Exception $e)
+    {
+        $this->component->onError($conn, $e);
+    }
+
+    public function onMessage(DuplexStreamInterface $stream, $msg)
+    {
+        $this->component->onMessage($stream, $msg);
+    }
+
+    public function createUdpServer($localAddress, $remoteAddress)
+    {
+
+        $this->localAddress = $localAddress;
+        $this->remoteAddress = $remoteAddress;
+
+        if ($this->socket) {
+            if ($this->socket->getLocalAddress() == $localAddress) {
+                return;
+            } else {
+                $this->socket->close();
+            }
+        }
+
+        $factory = new \React\Datagram\Factory();
+        $factory->createServer($localAddress)->then(function (\React\Datagram\Socket $server) use ($localAddress) {
+            $server->on('close', function () {
+                foreach ($this->addressToStream as $address => $stream) {
+                    $stream->close();
+                    $this->onClose($stream);
+                }
+                $this->addressToStream = [];
+            });
+            $this->socket = $server;
+            echo 'local_server ppppppppp' . '-' . $server->getLocalAddress() . "\n";
+            $server->on('message', function ($message, $address, $server) {
+                echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
+               
+                if (isset($this->addressToStream[$address])) {
+
+                    if (isset($this->addressDeferred[$address])) {
+                        $this->addressDeferred[$address]->resolve($this->addressToStream[$address]);
+                        unset($this->addressDeferred[$address]);
+                    }
+                    $this->destroyAddressTimer($address);
+
+                    if ($message == 'pending' || $message == 'connected') {
+                        return;
+                    }
+
+                    $this->addressToStream[$address]->emit('data', [$message]);
+                    $this->onMessage($this->addressToStream[$address], $message);
+                } else {
+                    if ($message == 'pending') {
+                        $this->socket->send('connected', $address);
+                    }
+                    else if ($message == 'connected') {
+                        $this->socket->send('connected', $address);
+                        $middleInStream  = new ThroughStream();
+                        $middleOutStream = new ThroughStream(function ($data) use ($address)  {
+                            $this->socket->send($data, $address);
+                        });
+                        $middleStream = new CompositeStream($middleInStream, $middleOutStream);
+                        $this->onOpen($middleStream, [
+                            'type' => 'p2p',
+                            'local_address' => $this->socket->getLocalAddress(),
+                            'remote_address' => $address
+                        ]);
+
+                        $middleStream->on('close', function () use ($address) {
+
+                            echo "$address close\n";
+
+                            unset($this->addressToStream[$address]);
+                            $this->destroyAddressTimer($address);
+                            if (isset($this->addressDeferred[$address])) {
+                                $this->addressDeferred[$address]->reject(new \Exception('close'));
+                                unset($this->addressDeferred[$address]);
+                            }
+                        });
+
+                        $this->addressToStream[$address] = $middleStream;
+                        if (isset($this->addressDeferred[$address])) {
+                            $this->addressDeferred[$address]->resolve($middleStream);
+                            unset($this->addressDeferred[$address]);
+                        }
+
+                        $this->destroyAddressTimer($address);
+                    }
+                }
+            });
+            
+        });
+    }
+
+    private function destroyAddressTimer($address)
+    {
+        if (isset($this->addressTimer[$address])) {
+            Loop::cancelTimer($this->addressTimer[$address]);
+            unset($this->addressTimer[$address]);
+        }
+    }
+
+    public function peer($params)
+    {
+
+        $uuidOrIp = $params['uuid'] ?? $params['something'];
+
+        if (isset($this->uuidOrIpToAddress[$uuidOrIp])) {
+            if (!$this->hasPeer($uuidOrIp)) {
+                return $this->addressDeferred[$this->uuidOrIpToAddress[$uuidOrIp]]->promise();
+            } else {
+                return \React\Promise\resolve($this->getPeer($uuidOrIp));
+            }
+        }
+        $deferred = new \React\Promise\Deferred();
+
+        $data = [];
+        if (str_contains($uuidOrIp, ':')) {
+            $data['something'] = $uuidOrIp;
+        } else {
+            $data['uuid'] = $uuidOrIp;
+        }
+
+
+        $remoteAddress = $this->remoteAddress;
+        $stream = $this->client->call(function ($stream, $info, $client) use ($remoteAddress) {
+            $client->p2pBridge->pendingPeer($remoteAddress);
+            $stream->write([
+                'local_address' => $client->p2pBridge->localAddress,
+                'remote_address' => $client->p2pBridge->remoteAddress,
+            ]);
+            return $stream;
+        }, $data, [
+            'server_request' => true
+        ]);
+
+        $address = null;
+        $stream->on('data', function ($data) use($stream, $uuidOrIp, $deferred, &$address)  {
+            $address = $data['remote_address'];
+            $this->uuidOrIpToAddress[$uuidOrIp] = $data['remote_address'];
+            if ($this->hasPeer($uuidOrIp)) {
+                $deferred->resolve($this->getPeer($uuidOrIp));
+            } else {
+                $this->addressDeferred[$data['remote_address']] = $deferred;
+                $this->pendingPeer($data['remote_address']);
+            }
+            $stream->close();
+        });
+
+        $stream->on('close', function () {
+            echo "close\n";
+        });
+
+        return \React\Promise\Timer\timeout($deferred->promise(), 6)->then(null, function($error) use(&$address) {
+            if ($address) {
+                $this->destroyAddressTimer($address);
+            }
+            throw $error;
+        });
+    }
+
+    public function hasPeer($uuidOrIp)
+    {
+        return isset($this->uuidOrIpToAddress[$uuidOrIp]) && isset($this->addressToStream[$this->uuidOrIpToAddress[$uuidOrIp]]);
+    }
+
+    public function pendingPeer($address)
+    {
+        if (isset($this->addressTimer[$address])) {
+            return;
+        }
+
+        $this->addressTimer[$address] = Loop::addPeriodicTimer(1, function () use ($address) {
+            $this->socket->send('pending', $address);
+        });
+
+        Loop::addTimer(60, function () use ($address) {
+            $this->destroyAddressTimer($address);
+        });
+
+    }
+
+    public function getPeer($uuidOrIp)
+    {
+
+        if (!$this->hasPeer($uuidOrIp)) {
+            return null;
+        }
+        return $this->addressToStream[$this->uuidOrIpToAddress[$uuidOrIp]];
+    }
+}

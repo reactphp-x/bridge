@@ -234,7 +234,7 @@ class P2pBridge implements P2pBridgeInterface
         $deferred = new \React\Promise\Deferred();
 
         $data = [];
-        if (str_contains($uuidOrIp, ':')) {
+        if (str_contains($uuidOrIp, '.')) {
             $data['something'] = $uuidOrIp;
         } else {
             $data['uuid'] = $uuidOrIp;

@@ -148,6 +148,10 @@ final class Client extends AbstractClient
             'decodeEncode' => new $this->decodeEncodeClass,
             'active_time' => time(),
         ]));
+
+        $stream->on('touch', function() use ($stream) {
+            $this->clients[$stream]['active_time'] = time();
+        });
     }
 
     public function onMessage(DuplexStreamInterface $stream, $msg)

@@ -7,6 +7,10 @@ use ReactphpX\Bridge\Interface\MessageComponentInterface;
 use React\Stream\CompositeStream;
 use React\Stream\ThroughStream;
 use React\EventLoop\Loop;
+use function React\Async\async;
+
+use labalityowo\kcp\KCP;
+use labalityowo\Bytebuffer\Buffer;
 
 class P2pBridge implements P2pBridgeInterface
 {
@@ -19,6 +23,10 @@ class P2pBridge implements P2pBridgeInterface
 
 
     protected $addressToStream = [];
+
+
+    protected $kcpTimer = null;
+    protected $addressToKCP = [];
 
     protected $uuidOrIpToAddress = [];
     protected $addressDeferred = [];
@@ -66,10 +74,27 @@ class P2pBridge implements P2pBridgeInterface
 
         $factory = new \React\Datagram\Factory();
         $factory->createServer($localAddress)->then(function (\React\Datagram\Socket $server) use ($localAddress) {
+            $this->kcpTimer = Loop::addPeriodicTimer(0.1, async(function () {
+                foreach ($this->addressToKCP as $address => $kcp) {
+                    $kcp->update((int)(hrtime(true) / 1000000));
+
+                    $buffer = Buffer::allocate(1024 * 1024 * 50);
+                    $size = $kcp->recv($buffer);
+                    if ($size > 0) {
+                        $message = $buffer->slice(0, $size)->toString();
+                        $this->addressToStream[$address]->emit('data', [$message]);
+                        $this->onMessage($this->addressToStream[$address], $message);
+                    }
+                }
+            }));
             $server->on('close', function () {
                 foreach ($this->addressToStream as $address => $stream) {
                     $stream->close();
                     $this->onClose($stream);
+                }
+                if ($this->kcpTimer) {
+                    Loop::cancelTimer($this->kcpTimer);
+                    $this->kcpTimer = null;
                 }
                 $this->addressToStream = [];
             });
@@ -77,8 +102,8 @@ class P2pBridge implements P2pBridgeInterface
             echo 'local_server ppppppppp' . '-' . $server->getLocalAddress() . "\n";
             $server->on('message', function ($message, $address, $server) {
                 echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
-               
                 if (isset($this->addressToStream[$address])) {
+                    $this->addressToStream[$address]->emit('touch', []);
 
                     if (isset($this->addressDeferred[$address])) {
                         $this->addressDeferred[$address]->resolve($this->addressToStream[$address]);
@@ -90,17 +115,24 @@ class P2pBridge implements P2pBridgeInterface
                         return;
                     }
 
-                    $this->addressToStream[$address]->emit('data', [$message]);
-                    $this->onMessage($this->addressToStream[$address], $message);
+                    // kcp 
+                    $kcp = $this->addressToKCP[$address];
+                    $kcp->input(Buffer::new($message));
+
+                    // $this->addressToStream[$address]->emit('data', [$message]);
+                    // $this->onMessage($this->addressToStream[$address], $message);
                 } else {
                     if ($message == 'pending') {
                         $this->socket->send('connected', $address);
-                    }
-                    else if ($message == 'connected') {
+                    } else if ($message == 'connected') {
                         $this->socket->send('connected', $address);
                         $middleInStream  = new ThroughStream();
-                        $middleOutStream = new ThroughStream(function ($data) use ($address)  {
-                            $this->socket->send($data, $address);
+                        $middleOutStream = new ThroughStream(function ($data) use ($address) {
+                            // kcp
+                            $kcp = $this->addressToKCP[$address];
+                            $kcp->send(Buffer::new($data));
+
+                            // $this->socket->send($data, $address);
                         });
                         $middleStream = new CompositeStream($middleInStream, $middleOutStream);
                         $this->onOpen($middleStream, [
@@ -109,30 +141,61 @@ class P2pBridge implements P2pBridgeInterface
                             'remote_address' => $address
                         ]);
 
+
                         $middleStream->on('close', function () use ($address) {
 
                             echo "$address close\n";
 
+                            // 清除 stream
                             unset($this->addressToStream[$address]);
+
+                            // 清除 timer
                             $this->destroyAddressTimer($address);
+
+                            // 清除 deferred
                             if (isset($this->addressDeferred[$address])) {
                                 $this->addressDeferred[$address]->reject(new \Exception('close'));
                                 unset($this->addressDeferred[$address]);
                             }
+
+                            // 清除 kcp
+                            if (isset($this->addressToKCP[$address])) {
+                                unset($this->addressToKCP[$address]);
+                            }
+
+                            // 清除对应关系
+                            $uuidOrIpToAddress = $this->uuidOrIpToAddress;
+                            $uuidOrIp = array_search($address, $uuidOrIpToAddress);
+                            if ($uuidOrIp) {
+                                unset($this->uuidOrIpToAddress[$uuidOrIp]);
+                            }
                         });
 
                         $this->addressToStream[$address] = $middleStream;
+
+                        $this->addressToKCP[$address] = $kcp = new KCP(11, 22, function (Buffer $buffer) use ($middleStream, $address) {
+                            // $middleStream->write($buffer->toString());
+                            $this->socket->send($buffer->toString(), $address);
+
+                        });
+
+                        $kcp->setNodelay(true, 10, true);
+
                         if (isset($this->addressDeferred[$address])) {
                             $this->addressDeferred[$address]->resolve($middleStream);
                             unset($this->addressDeferred[$address]);
                         }
 
+                        $this->destroyAddress($address);
                         $this->destroyAddressTimer($address);
                     }
                 }
             });
-            
         });
+    }
+
+    public function destroyAddress($address) {
+
     }
 
     private function destroyAddressTimer($address)
@@ -178,7 +241,7 @@ class P2pBridge implements P2pBridgeInterface
         ]);
 
         $address = null;
-        $stream->on('data', function ($data) use($stream, $uuidOrIp, $deferred, &$address)  {
+        $stream->on('data', function ($data) use ($stream, $uuidOrIp, $deferred, &$address) {
             $address = $data['remote_address'];
             $this->uuidOrIpToAddress[$uuidOrIp] = $data['remote_address'];
             if ($this->hasPeer($uuidOrIp)) {
@@ -194,7 +257,7 @@ class P2pBridge implements P2pBridgeInterface
             echo "close\n";
         });
 
-        return \React\Promise\Timer\timeout($deferred->promise(), 6)->then(null, function($error) use(&$address) {
+        return \React\Promise\Timer\timeout($deferred->promise(), 6)->then(null, function ($error) use (&$address) {
             if ($address) {
                 $this->destroyAddressTimer($address);
             }
@@ -220,7 +283,6 @@ class P2pBridge implements P2pBridgeInterface
         Loop::addTimer(60, function () use ($address) {
             $this->destroyAddressTimer($address);
         });
-
     }
 
     public function getPeer($uuidOrIp)

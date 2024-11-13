@@ -61,8 +61,18 @@ class P2pBridge implements P2pBridgeInterface
     public function createUdpServer($localAddress, $remoteAddress)
     {
 
+        if (str_contains($localAddress, '//')) {
+            $localAddress = explode('//', $localAddress)[1];
+        }
+
+        if (str_contains($remoteAddress, '//')) {
+            $remoteAddress = explode('//', $remoteAddress)[1];
+        }
+
         $this->localAddress = $localAddress;
         $this->remoteAddress = $remoteAddress;
+
+        var_dump($this->localAddress, $this->remoteAddress);
 
         if ($this->socket) {
             if ($this->socket->getLocalAddress() == $localAddress) {
@@ -280,6 +290,7 @@ class P2pBridge implements P2pBridgeInterface
         }
 
         $this->addressTimer[$address] = Loop::addPeriodicTimer(1, function () use ($address) {
+            var_dump('pending', $address);
             $this->socket->send('pending', $address);
         });
 

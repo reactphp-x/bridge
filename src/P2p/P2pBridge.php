@@ -255,13 +255,19 @@ class P2pBridge implements P2pBridgeInterface
 
         $address = null;
         $stream->on('data', function ($data) use ($stream, $uuidOrIp, $deferred, &$address) {
-            $address = $data['remote_address'];
-            $this->uuidOrIpToAddress[$uuidOrIp] = $data['remote_address'];
+
+            if ($this->equalPublicIp($data['remote_address'], $this->remoteAddress)) {
+                $address = $data['local_address'];
+            } else {
+                $address = $data['remote_address'];
+            }            
+
+            $this->uuidOrIpToAddress[$uuidOrIp] = $address;
             if ($this->hasPeer($uuidOrIp)) {
                 $deferred->resolve($this->getPeer($uuidOrIp));
             } else {
-                $this->addressDeferred[$data['remote_address']] = $deferred;
-                $this->pendingPeer($data['remote_address']);
+                $this->addressDeferred[$address] = $deferred;
+                $this->pendingPeer($address);
             }
             $stream->close();
         });
@@ -270,7 +276,7 @@ class P2pBridge implements P2pBridgeInterface
             echo "close\n";
         });
 
-        return \React\Promise\Timer\timeout($deferred->promise(), 6)->then(null, function ($error) use (&$address) {
+        return \React\Promise\Timer\timeout($deferred->promise(), 2.5)->then(null, function ($error) use (&$address) {
             if ($address) {
                 $this->destroyAddressTimer($address);
             }
@@ -306,5 +312,10 @@ class P2pBridge implements P2pBridgeInterface
             return null;
         }
         return $this->addressToStream[$this->uuidOrIpToAddress[$uuidOrIp]];
+    }
+
+    private function equalPublicIp($address1, $address2)
+    {
+        return explode(':', $address1)[0] == explode(':', $address2)[0];
     }
 }

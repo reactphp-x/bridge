@@ -102,7 +102,7 @@ class P2pBridge implements P2pBridgeInterface
             $this->socket = $server;
             echo 'local_server ppppppppp' . '-' . $server->getLocalAddress() . "\n";
             $server->on('message', function ($message, $address, $server) {
-                // echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
+                echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
                 if (isset($this->addressToStream[$address])) {
                     $this->addressToStream[$address]->emit('touch', []);
 

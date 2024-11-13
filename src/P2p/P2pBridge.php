@@ -74,7 +74,7 @@ class P2pBridge implements P2pBridgeInterface
 
         $factory = new \React\Datagram\Factory();
         $factory->createServer($localAddress)->then(function (\React\Datagram\Socket $server) use ($localAddress) {
-            $this->kcpTimer = Loop::addPeriodicTimer(0.1, async(function () {
+            $this->kcpTimer = Loop::addPeriodicTimer(0.05, async(function () {
                 foreach ($this->addressToKCP as $address => $kcp) {
                     $kcp->update((int)(hrtime(true) / 1000000));
 
@@ -85,6 +85,7 @@ class P2pBridge implements P2pBridgeInterface
                         $this->addressToStream[$address]->emit('data', [$message]);
                         $this->onMessage($this->addressToStream[$address], $message);
                     }
+                    echo 'kcp update getWaitSnd ' .$kcp->getWaitSnd(). "\n";
                 }
             }));
             $server->on('close', function () {
@@ -101,7 +102,7 @@ class P2pBridge implements P2pBridgeInterface
             $this->socket = $server;
             echo 'local_server ppppppppp' . '-' . $server->getLocalAddress() . "\n";
             $server->on('message', function ($message, $address, $server) {
-                echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
+                // echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
                 if (isset($this->addressToStream[$address])) {
                     $this->addressToStream[$address]->emit('touch', []);
 
@@ -131,7 +132,7 @@ class P2pBridge implements P2pBridgeInterface
                             // kcp
                             $kcp = $this->addressToKCP[$address];
                             $kcp->send(Buffer::new($data));
-
+                            $kcp->flush();
                             // $this->socket->send($data, $address);
                         });
                         $middleStream = new CompositeStream($middleInStream, $middleOutStream);
@@ -179,7 +180,9 @@ class P2pBridge implements P2pBridgeInterface
 
                         });
 
-                        $kcp->setNodelay(true, 10, true);
+                        $kcp->setNodelay(true, 5, true);
+                        $kcp->setWndSize(1024, 1024);
+                        $kcp->setInterval(5);
 
                         if (isset($this->addressDeferred[$address])) {
                             $this->addressDeferred[$address]->resolve($middleStream);

@@ -112,7 +112,7 @@ class P2pBridge implements P2pBridgeInterface
             $this->socket = $server;
             echo 'local_server ppppppppp' . '-' . $server->getLocalAddress() . "\n";
             $server->on('message', function ($message, $address, $server) {
-                echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
+                // echo 'from client ppppppppp' . $address . ': ' . $message . PHP_EOL;
                 if (isset($this->addressToStream[$address])) {
                     $this->addressToStream[$address]->emit('touch', []);
 
@@ -141,8 +141,21 @@ class P2pBridge implements P2pBridgeInterface
                         $middleOutStream = new ThroughStream(function ($data) use ($address) {
                             // kcp
                             $kcp = $this->addressToKCP[$address];
-                            $kcp->send(Buffer::new($data));
-                            $kcp->flush();
+
+
+                            $maxSegmentSize = 1024; // 每段最大字节数
+                            // 将数据分割成小段
+                            $dataLength = strlen($data);
+                            echo "send data length: " . $dataLength . "\n";
+
+                            for ($i = 0; $i < $dataLength; $i += $maxSegmentSize) {
+                                $segment = substr($data, $i, $maxSegmentSize);
+                                echo "send data segment length: " . strlen($segment) . "\n";
+                                $kcp->send(Buffer::new($segment));
+                                $kcp->flush();
+                            }
+
+
                             // $this->socket->send($data, $address);
                         });
                         $middleStream = new CompositeStream($middleInStream, $middleOutStream);
@@ -187,7 +200,6 @@ class P2pBridge implements P2pBridgeInterface
                         $this->addressToKCP[$address] = $kcp = new KCP(11, 22, function (Buffer $buffer) use ($middleStream, $address) {
                             // $middleStream->write($buffer->toString());
                             $this->socket->send($buffer->toString(), $address);
-
                         });
 
                         $kcp->setNodelay(true, 5, true);
@@ -207,9 +219,7 @@ class P2pBridge implements P2pBridgeInterface
         });
     }
 
-    public function destroyAddress($address) {
-
-    }
+    public function destroyAddress($address) {}
 
     private function destroyAddressTimer($address)
     {
@@ -260,7 +270,7 @@ class P2pBridge implements P2pBridgeInterface
                 $address = $data['local_address'];
             } else {
                 $address = $data['remote_address'];
-            }            
+            }
 
             $this->uuidOrIpToAddress[$uuidOrIp] = $address;
             if ($this->hasPeer($uuidOrIp)) {

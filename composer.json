@@ -23,6 +23,7 @@
         "react/datagram": "^1.9",
         "guzzlehttp/psr7": "^2.6",
         "ratchet/rfc6455": "^0.3.1",
-        "wpjscc/kcp-php": "^0.0.1"
+        "wpjscc/kcp-php": "^0.0.1",
+        "reactphp-x/bandwidth": "^0.0.1"
     }
 }

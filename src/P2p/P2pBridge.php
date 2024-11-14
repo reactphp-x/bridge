@@ -8,6 +8,7 @@ use React\Stream\CompositeStream;
 use React\Stream\ThroughStream;
 use React\EventLoop\Loop;
 use function React\Async\async;
+use ReactphpX\Bandwidth\Bandwidth;
 
 use labalityowo\kcp\KCP;
 use labalityowo\Bytebuffer\Buffer;
@@ -95,7 +96,7 @@ class P2pBridge implements P2pBridgeInterface
                         $this->addressToStream[$address]->emit('data', [$message]);
                         $this->onMessage($this->addressToStream[$address], $message);
                     }
-                    echo 'kcp update getWaitSnd ' .$kcp->getWaitSnd(). "\n";
+                    echo 'kcp update size getWaitSnd ' . $size .' '. $kcp->getWaitSnd() . "\n";
                 }
             }));
             $server->on('close', function () {
@@ -129,7 +130,7 @@ class P2pBridge implements P2pBridgeInterface
                     // kcp 
                     $kcp = $this->addressToKCP[$address];
                     $kcp->input(Buffer::new($message));
-
+                    $kcp->update((int)(hrtime(true) / 1000000));
                     // $this->addressToStream[$address]->emit('data', [$message]);
                     // $this->onMessage($this->addressToStream[$address], $message);
                 } else {
@@ -138,10 +139,24 @@ class P2pBridge implements P2pBridgeInterface
                     } else if ($message == 'connected') {
                         $this->socket->send('connected', $address);
                         $middleInStream  = new ThroughStream();
-                        $middleOutStream = new ThroughStream(function ($data) use ($address) {
+                        $bandstream = new ThroughStream();
+                        $middleOutStream = new ThroughStream(function ($data) use ($address, $bandstream) {
+
+
+                            // $maxSegmentSize = 1024; // 每段最大字节数
+                            // // 将数据分割成小段
+                            // $dataLength = strlen($data);
+                            // echo "send data length: " . $dataLength . "\n";
+
+                            // for ($i = 0; $i < $dataLength; $i += $maxSegmentSize) {
+                            //     $segment = substr($data, $i, $maxSegmentSize);
+                            //     $bandstream->write($segment);
+                            // }
+
                             // kcp
                             $kcp = $this->addressToKCP[$address];
-
+                            // $kcp->send(Buffer::new($data));
+                            // $kcp->flush();
 
                             $maxSegmentSize = 1024; // 每段最大字节数
                             // 将数据分割成小段
@@ -202,9 +217,20 @@ class P2pBridge implements P2pBridgeInterface
                             $this->socket->send($buffer->toString(), $address);
                         });
 
-                        $kcp->setNodelay(true, 5, true);
-                        $kcp->setWndSize(1024, 1024);
+
+                        (new Bandwidth(1024 * 1024 * 150, 1024 * 1024 * 150))->stream($bandstream)->on('data', function ($data) use ($address) {
+                            // kcp
+                            $kcp = $this->addressToKCP[$address];
+                            echo "send data length: " . strlen($data) . "\n";
+                            $kcp->send(Buffer::new($data));
+                            $kcp->flush();
+                        });
+
+
+                        $kcp->setNodelay(true, 1, true);
+                        $kcp->setWndSize(1024, 2048);
                         $kcp->setInterval(5);
+                        $kcp->setRxMinRto(10);
 
                         if (isset($this->addressDeferred[$address])) {
                             $this->addressDeferred[$address]->resolve($middleStream);

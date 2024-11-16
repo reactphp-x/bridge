@@ -567,7 +567,7 @@ final class Client extends AbstractClient
 
        
         try {
-            $stream = await(\React\Promise\Timer\timeout($deferred->promise(), 3)->then(function ($stream) use ($uuid) {
+            $stream = await(\React\Promise\Timer\timeout($deferred->promise(), 6)->then(function ($stream) use ($uuid) {
                 unset($this->uuidToDeferred[$uuid]);
                 return $stream;
             }, function ($e) use ($uuid, &$fn, &$fn1) {

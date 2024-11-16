@@ -44,6 +44,8 @@ final class Client extends AbstractClient
     // 0 close 1 open 2 shutdown
     protected $status = 0;
 
+    public $forceServerRequest = true;
+
 
     public function __construct($uri, $uuid)
     {
@@ -551,20 +553,27 @@ final class Client extends AbstractClient
         });
 
 
-        if ($serverRequest === true) {
-            echo "serverRequestFn\n";
+        if ($this->forceServerRequest) {
+            echo "forece serverRequestFn\n";
             $serverRequestFn();
         } else {
-            echo "p2pRequestFn\n";
-            // p2p request
-            if (!$this->controlConnection) {
-                $this->once('success', function () use ($p2pRequestFn) {
-                    $p2pRequestFn();
-                });
+            if ($serverRequest === true) {
+                echo "serverRequestFn\n";
+                $serverRequestFn();
             } else {
-                $p2pRequestFn();
+                echo "p2pRequestFn\n";
+                // p2p request
+                if (!$this->controlConnection) {
+                    $this->once('success', function () use ($p2pRequestFn) {
+                        $p2pRequestFn();
+                    });
+                } else {
+                    $p2pRequestFn();
+                }
             }
         }
+
+       
 
 
        

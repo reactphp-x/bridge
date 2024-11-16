@@ -524,9 +524,10 @@ final class Client extends AbstractClient
 
         $p2pRequestFn = async(function () use ($selfSerialized, $peerSerialized, $params, $uuid, $data, $deferred, $serverRequestFn, &$fn1) {
             $this->p2pBridge->peer($params)->then(function ($peer) use ($selfSerialized, $peerSerialized, $uuid, $data, $deferred, $serverRequestFn, &$fn, &$fn1) {
-                // 说明打洞成功了
-                echo 'p2p tunnel success' . PHP_EOL;
+        
                 if ($this->connections->contains($peer)) {
+                    // 说明打洞成功了
+                    echo 'p2p tunnel success' . PHP_EOL;
                     $peer->write($this->decodeEncode->encode([
                         'cmd' => 'callback_p2p',
                         'uuid' => $uuid,
@@ -537,6 +538,7 @@ final class Client extends AbstractClient
                         ]
                     ]));
                 } else {
+                    echo 'p2p tunnel fail' . PHP_EOL;
                     $serverRequestFn();
                 }
             }, function ($e) use ($deferred, $serverRequestFn) {

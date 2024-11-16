@@ -35,7 +35,8 @@ class P2pBridge implements P2pBridgeInterface
 
     protected $isSupportBandwidth = false;
 
-    protected $isSupportKcp = false;
+    protected $isSupportKcp = true;
+    protected $isSupportKcpExt = true;
 
     public function __construct(MessageComponentInterface $component, $client)
     {
@@ -61,6 +62,16 @@ class P2pBridge implements P2pBridgeInterface
     public function onMessage(DuplexStreamInterface $stream, $msg)
     {
         $this->component->onMessage($stream, $msg);
+    }
+
+    private function getMillisecond()
+    {
+        
+        list($seconds, $nanoseconds) = hrtime();
+
+        $seconds =  $seconds * 1e3 + floor($nanoseconds / 1e6);
+
+        return $seconds;
     }
 
     public function createUdpServer($localAddress, $remoteAddress)
@@ -92,16 +103,33 @@ class P2pBridge implements P2pBridgeInterface
             if ($this->isSupportKcp) {
                 $this->kcpTimer = Loop::addPeriodicTimer(0.05, async(function () {
                     foreach ($this->addressToKCP as $address => $kcp) {
-                        $kcp->update((int)(hrtime(true) / 1000000));
-    
-                        $buffer = Buffer::allocate(1024 * 1024 * 50);
-                        $size = $kcp->recv($buffer);
-                        if ($size > 0) {
-                            $message = $buffer->slice(0, $size)->toString();
-                            $this->addressToStream[$address]->emit('data', [$message]);
-                            $this->onMessage($this->addressToStream[$address], $message);
+
+                        if ($this->isSupportKcpExt) {
+                            kcp_update($kcp, $this->getMillisecond());
+                            $size = 0;
+
+                            while ($message = kcp_recv($kcp, 1024 * 1024 * 10)) {
+                                $size = strlen($message);
+                                $this->addressToStream[$address]->emit('data', [$message]);
+                                $this->onMessage($this->addressToStream[$address], $message);
+                                echo 'kcp ext update size getWaitSnd ' . $size .' '. kcp_waitsnd($kcp) . "\n";
+                            }
+
+                           
+
+                        } else {
+                            $kcp->update($this->getMillisecond());
+                            $buffer = Buffer::allocate(1024 * 1024 * 50);
+                            $size = $kcp->recv($buffer);
+                            if ($size > 0) {
+                                $message = $buffer->slice(0, $size)->toString();
+                                $this->addressToStream[$address]->emit('data', [$message]);
+                                $this->onMessage($this->addressToStream[$address], $message);
+                            }
+                            echo 'kcp update size getWaitSnd ' . $size .' '. $kcp->getWaitSnd() . "\n";
                         }
-                        echo 'kcp update size getWaitSnd ' . $size .' '. $kcp->getWaitSnd() . "\n";
+                       
+
                     }
                 }));
             }
@@ -136,8 +164,13 @@ class P2pBridge implements P2pBridgeInterface
                     if ($this->isSupportKcp) {
                         // kcp 
                         $kcp = $this->addressToKCP[$address];
-                        $kcp->input(Buffer::new($message));
-                        $kcp->update((int)(hrtime(true) / 1000000));
+
+                        if ($this->isSupportKcpExt) {
+                            kcp_input($kcp, $message);
+                        } else {
+                            $kcp->input(Buffer::new($message));
+                        }
+                        // $kcp->update($this->getMillisecond());
                     } else {
                         var_dump('222222222');
                         $this->addressToStream[$address]->emit('data', [$message]);
@@ -173,8 +206,13 @@ class P2pBridge implements P2pBridgeInterface
                                 } else {
                                     if ($this->isSupportKcp) {
                                         $kcp = $this->addressToKCP[$address];
-                                        $kcp->send(Buffer::new($segment));
-                                        $kcp->flush();
+                                        if ($this->isSupportKcpExt) {
+                                            kcp_send($kcp, $segment);
+                                            kcp_flush($kcp);
+                                        } else {
+                                            $kcp->send(Buffer::new($segment));
+                                            $kcp->flush();
+                                        }
                                     } else {
                                         var_dump('111111111');
                                         $this->socket->send($segment, $address);
@@ -208,6 +246,9 @@ class P2pBridge implements P2pBridgeInterface
 
                             // 清除 kcp
                             if (isset($this->addressToKCP[$address])) {
+                                if ($this->isSupportKcpExt) {
+                                    kcp_release($this->addressToKCP[$address]);
+                                }
                                 unset($this->addressToKCP[$address]);
                             }
 
@@ -221,11 +262,31 @@ class P2pBridge implements P2pBridgeInterface
 
                         $this->addressToStream[$address] = $middleStream;
 
-                        $this->addressToKCP[$address] = $kcp = new KCP(11, 22, function (Buffer $buffer) use ($address) {
-                            if ($this->isSupportKcp) {
-                                $this->socket->send($buffer->toString(), $address);
+                        if ($this->isSupportKcp) {
+
+                            if ($this->isSupportKcpExt) {
+                                $kcp = kcp_create(123, 111);
+                                kcp_set_output_callback($kcp, function ($buffer = '', $len = 0) use ($address) {
+                                    $this->socket->send($buffer, $address);
+                                });
+                                kcp_nodelay($kcp, 1, 10, 2, 1);
+                                kcp_wndsize($kcp, 1024, 2048);
+                                kcp_set_rx_minrto($kcp, 10);
+
+                            } else {
+                                $kcp = new KCP(11, 22, function (Buffer $buffer) use ($address) {
+                                    $this->socket->send($buffer->toString(), $address);
+                                });
+                                $kcp->setNodelay(true, 1, true);
+                                $kcp->setWndSize(1024, 2048);
+                                $kcp->setInterval(5);
+                                $kcp->setRxMinRto(10);
                             }
-                        });
+
+                            $this->addressToKCP[$address] = $kcp;
+                          
+    
+                        }
 
                         (new Bandwidth(1024 * 1024 * 150, 1024 * 1024 * 150))->stream($bandstream)->on('data', function ($data) use ($address) {
                             echo "send data length: " . strlen($data) . "\n";
@@ -233,19 +294,21 @@ class P2pBridge implements P2pBridgeInterface
                             if ($this->isSupportKcp) {
                                 // kcp
                                 $kcp = $this->addressToKCP[$address];
-                                $kcp->send(Buffer::new($data));
-                                $kcp->flush();
+
+                                if ($this->isSupportKcpExt) {
+                                    kcp_send($kcp, $data);
+                                    kcp_flush($kcp);
+                                } else {
+                                    $kcp->send(Buffer::new($data));
+                                    $kcp->flush();
+                                }
                             } else {
                                 $this->socket->send($data, $address);
                             }
                         });
 
 
-                        $kcp->setNodelay(true, 1, true);
-                        $kcp->setWndSize(1024, 2048);
-                        $kcp->setInterval(5);
-                        $kcp->setRxMinRto(10);
-
+                       
                         if (isset($this->addressDeferred[$address])) {
                             $this->addressDeferred[$address]->resolve($middleStream);
                             unset($this->addressDeferred[$address]);

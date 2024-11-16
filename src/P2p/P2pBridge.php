@@ -354,8 +354,15 @@ class P2pBridge implements P2pBridgeInterface
         }
 
 
+        $localAddress = $this->localAddress;
         $remoteAddress = $this->remoteAddress;
-        $stream = $this->client->call(function ($stream, $info, $client) use ($remoteAddress) {
+        $stream = $this->client->call(function ($stream, $info, $client) use ($localAddress, $remoteAddress) {
+
+            // 在局域网下
+            if ($client->p2pBridge->equalPublicIp($remoteAddress, $client->p2pBridge->remoteAddress)) {
+                $remoteAddress = $localAddress;
+            }
+
             $client->p2pBridge->pendingPeer($remoteAddress);
             $stream->write([
                 'local_address' => $client->p2pBridge->localAddress,

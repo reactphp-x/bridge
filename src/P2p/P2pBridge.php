@@ -434,7 +434,7 @@ class P2pBridge implements P2pBridgeInterface
         return $this->addressToStream[$this->uuidOrIpToAddress[$uuidOrIp]];
     }
 
-    private function equalPublicIp($address1, $address2)
+    public function equalPublicIp($address1, $address2)
     {
         return explode(':', $address1)[0] == explode(':', $address2)[0];
     }

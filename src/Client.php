@@ -185,6 +185,11 @@ final class Client extends AbstractClient
             $this->controlConnection = null;
             $this->controlInfo = null;
             echo "controlConnection close retry after 3 second\n";
+
+            foreach ($this->connections as $conn) {
+                $conn->close();
+            }
+
             if ($this->status != 2) {
                 $this->status = 0;
             }

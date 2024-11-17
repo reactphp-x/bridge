@@ -396,7 +396,7 @@ class P2pBridge implements P2pBridgeInterface
         });
 
         $stream->on('close', function () {
-            echo "close\n";
+            echo "tmp close\n";
         });
 
         return \React\Promise\Timer\timeout($deferred->promise(), 2.5)->then(null, function ($error) use (&$address) {

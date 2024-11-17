@@ -190,6 +190,12 @@ final class Client extends AbstractClient
             if ($this->status != 2) {
                 $this->status = 0;
             }
+
+            foreach ($this->connections as $conn) {
+                $conn->close();
+                $this->onClose($conn);
+            }
+
             Loop::addTimer(3, function () {
                 $this->start();
             });

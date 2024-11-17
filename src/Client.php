@@ -556,7 +556,7 @@ final class Client extends AbstractClient
         $uuidOrIp = $params['uuid'] ?? $params['something'];
         $isServerLuyouIp = false;
         if (str_contains($uuidOrIp, '.')) {
-            $isServerLuyouIp = explode('.', $uuidOrIp)[3] === 1;
+            $isServerLuyouIp = explode('.', $uuidOrIp)[3] == 1;
         }
 
         if ($this->forceServerRequest) {

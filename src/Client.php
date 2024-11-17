@@ -533,7 +533,7 @@ final class Client extends AbstractClient
         };
 
         $p2pRequestFn = async(function () use ($selfSerialized, $peerSerialized, $params, $uuid, $data, $deferred, $serverRequestFn, &$fn1) {
-            echo "start p2p tunnel"
+            echo "start p2p tunnel";
             $this->p2pBridge->peer($params)->then(function ($peer) use ($selfSerialized, $peerSerialized, $uuid, $data, $deferred, $serverRequestFn, &$fn, &$fn1) {
         
                 if ($this->connections->contains($peer)) {

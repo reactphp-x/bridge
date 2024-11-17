@@ -344,7 +344,10 @@ class P2pBridge implements P2pBridgeInterface
             echo "isset uuidOrIpToAddress $uuidOrIp {$this->uuidOrIpToAddress[$uuidOrIp]}";
             if (!$this->hasPeer($uuidOrIp)) {
                 echo "isset uuidOrIpToAddress11";
-                return $this->addressDeferred[$this->uuidOrIpToAddress[$uuidOrIp]]->promise();
+                return \React\Promise\Timer\timeout($this->addressDeferred[$this->uuidOrIpToAddress[$uuidOrIp]]->promise(), 2.5)->then(null, function ($error) use ($uuidOrIp)  {
+                    unset($this->addressDeferred[$this->uuidOrIpToAddress[$uuidOrIp]]);
+                    throw $error;
+                });
             } else {
                 echo "isset uuidOrIpToAddress22";
                 return \React\Promise\resolve($this->getPeer($uuidOrIp));

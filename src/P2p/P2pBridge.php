@@ -228,7 +228,7 @@ class P2pBridge implements P2pBridgeInterface
                         ]);
 
 
-                        $middleStream->on('close', function () use ($address) {
+                        $middleStream->on('close', function () use ($address, $middleStream) {
 
                             echo "$address close\n";
 
@@ -258,6 +258,8 @@ class P2pBridge implements P2pBridgeInterface
                             if ($uuidOrIp) {
                                 unset($this->uuidOrIpToAddress[$uuidOrIp]);
                             }
+
+                            $this->onClose($middleStream);
                         });
 
                         $this->addressToStream[$address] = $middleStream;

@@ -553,11 +553,17 @@ final class Client extends AbstractClient
         });
 
 
+        $uuidOrIp = $params['uuid'] ?? $params['something'];
+        $isServerLuyouIp = false;
+        if (str_contains($uuidOrIp, '.')) {
+            $isServerLuyouIp = explode('.', $uuidOrIp)[3] === 1;
+        }
+
         if ($this->forceServerRequest) {
             echo "forece serverRequestFn\n";
             $serverRequestFn();
         } else {
-            if ($serverRequest === true) {
+            if ($isServerLuyouIp || $serverRequest === true) {
                 echo "serverRequestFn\n";
                 $serverRequestFn();
             } else {

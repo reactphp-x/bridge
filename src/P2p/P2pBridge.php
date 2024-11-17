@@ -167,6 +167,7 @@ class P2pBridge implements P2pBridgeInterface
 
                         if ($this->isSupportKcpExt) {
                             kcp_input($kcp, $message);
+                            kcp_update($kcp, $this->getMillisecond());
                         } else {
                             $kcp->input(Buffer::new($message));
                         }

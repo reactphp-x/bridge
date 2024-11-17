@@ -137,7 +137,7 @@ final class Client extends AbstractClient
                 $this->ping($stream)->then(function () use ($msg) {
                     echo $msg . ' ping success' . PHP_EOL;
                 }, function ($e) use ($stream, $msg) {
-                    echo $msg . ' ping error ' . $e->getMessage() . PHP_EOL;
+                    echo $msg . ' ping fail ' . $e->getMessage() . PHP_EOL;
                     $stream->close();
                     $this->onClose($stream);
                 });

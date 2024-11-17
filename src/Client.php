@@ -124,7 +124,7 @@ final class Client extends AbstractClient
             }
         }
 
-        $time = 30;
+        $time = 20;
 
         if ($type == 'p2p') {
             $time = 5;
@@ -139,6 +139,7 @@ final class Client extends AbstractClient
                 }, function ($e) use ($stream, $msg) {
                     echo $msg . ' ping error ' . $e->getMessage() . PHP_EOL;
                     $stream->close();
+                    $this->onClose($stream);
                 });
             }
         });
@@ -185,10 +186,6 @@ final class Client extends AbstractClient
             $this->controlConnection = null;
             $this->controlInfo = null;
             echo "controlConnection close retry after 3 second\n";
-
-            foreach ($this->connections as $conn) {
-                $conn->close();
-            }
 
             if ($this->status != 2) {
                 $this->status = 0;

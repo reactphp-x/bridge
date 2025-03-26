@@ -4,7 +4,7 @@ namespace ReactphpX\Bridge;
 
 use Evenement\EventEmitterInterface;
 use Evenement\EventEmitterTrait;
-use ReactphpX\Pool\AbstractConnectionPool;
+use ReactphpX\Bridge\Pool\AbstractConnectionPool;
 use ReactphpX\Bridge\Interface\CallInterface;
 use ReactphpX\Bridge\Interface\CreateConnectionInterface;
 use ReactphpX\Bridge\Info;
@@ -18,13 +18,14 @@ use React\Stream;
 use React\Promise\Timer\TimeoutException;
 use function React\Promise\reject;
 use function React\Promise\resolve;
-use ReactphpX\Pool\Exception;
+use ReactphpX\Bridge\Pool\Exception;
 
 class Pool extends AbstractConnectionPool implements CallInterface
 {
 
     protected $connectTimeout = 3;
     protected $connections;
+    protected $streams;
     protected $uri;
     protected $createConnection;
     protected $uuidMaxTunnel = 1;
@@ -46,6 +47,7 @@ class Pool extends AbstractConnectionPool implements CallInterface
         $this->createConnection = $createConnection;
         $this->createConnection->setCall($this);
         $this->connections = new \SplObjectStorage;
+        $this->streams = new \SplObjectStorage;
         $this->uuidMaxTunnel = $config['uuid_max_tunnel'] ?? 1;
         parent::__construct($config, $loop);
     }
@@ -76,7 +78,11 @@ class Pool extends AbstractConnectionPool implements CallInterface
             $uuidToStream[$uuid] = $stream;
             $this->connections[$connection]['uuidToStream'] = $uuidToStream;
             $controlUuidToStreamUuids = $this->connections[$connection]['controlUuidToStreamUuids'];
-            $controlUuidToStreamUuids[$this->createConnection->getControlUuidByTunnelStream($connection)][] = $uuid;
+            $controllerUuid = $this->createConnection->getControlUuidByTunnelStream($connection);
+            $this->streams->attach($stream, new Info([
+                'controlUuid' => $controllerUuid,
+            ]));
+            $controlUuidToStreamUuids[$controllerUuid][] = $uuid;
             $this->connections[$connection]['controlUuidToStreamUuids'] = $controlUuidToStreamUuids;
             $connection->write($this->connections[$connection]['decodeEncode']->encode([
                 'cmd' => 'callback',
@@ -155,6 +161,9 @@ class Pool extends AbstractConnectionPool implements CallInterface
                     echo "close $uuid\n";
                     $this->releaseConnection($connection);
                 }
+                if ($this->streams->contains($stream)) {
+                    $this->streams->detach($stream);
+                }
             });
         } catch (\Throwable $th) {
             $this->log([
@@ -171,6 +180,14 @@ class Pool extends AbstractConnectionPool implements CallInterface
         }
 
         return $stream;
+    }
+
+    public function getControlUuidByTunnelStream($stream)
+    {
+        if ($this->streams->contains($stream)) {
+            return $this->streams[$stream]['controlUuid'];
+        }
+        return null;
     }
 
     public function getConnection($params = null)

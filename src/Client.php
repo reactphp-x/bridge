@@ -148,10 +148,11 @@ final class Client extends AbstractClient
 
     public function onClose(DuplexStreamInterface $stream, $reason = null)
     {
+
         if ($this->controlConnection === $stream) {
             $this->controlConnection = null;
             echo "controlConnection close retry after 3 second\n";
-            if ($this->status != 2) {
+            if ($this->status != 2 && $this->status != 3) {
                 $this->status = 0;
             }
             Loop::addTimer(3, function () {
@@ -172,6 +173,17 @@ final class Client extends AbstractClient
 
         if ($this->clients->contains($stream)) {
             $this->clients->detach($stream);
+        }
+
+        if ($this->clients->count() == 0) {
+            echo 'no clients, retry after 3 second' . PHP_EOL;
+            if ($this->status != 2 && $this->status != 3) {
+                $this->status = 0;
+                $this->controlConnection = null;
+                Loop::addTimer(3, function () {
+                    $this->start();
+                });
+            }
         }
 
     }
@@ -385,11 +397,11 @@ final class Client extends AbstractClient
 
     public function start()
     {
-        if ($this->status == 1 || $this->status == 2) {
+        if ($this->status == 1 || $this->status == 2 || $this->status == 3) {
             return;
         }
 
-        $this->status = 0;
+        $this->status = 3;
         $this->connector->connect($this->uri)->then(function ($stream) {
             $this->status = 1;
             return $stream;

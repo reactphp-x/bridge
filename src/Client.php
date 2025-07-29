@@ -409,7 +409,9 @@ final class Client extends AbstractClient
             echo "connection failed " . $this->uri . "\n";
             echo $e->getMessage() . "\n";
             echo "retry after 3 second\n";
-            $this->status = 0;
+            if ($this->status != 2) {
+                $this->status = 0;
+            }
             Loop::addTimer(3, function () {
                 $this->start();
             });
